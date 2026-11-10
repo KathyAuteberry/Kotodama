@@ -790,6 +790,13 @@
   <data name="Engines_BlockedNotConfigured"><value>Traducción desactivada: el motor principal aún no tiene URL de servidor. Introdúcela en /kotodama → Motores.</value></data>
   <data name="Welcome_LocalOnly"><value>Kotodama traduce con tu propio servidor de IA local y nunca usa servicios en la nube a menos que lo permitas. Introduce la URL de tu servidor en /kotodama → Motores.</value></data>
   <data name="ChatWindow_NotTranslated"><value>(sin traducir)</value></data>
+  <data name="Outgoing_Mode"><value>Traducción saliente</value></data>
+  <data name="Outgoing_ModeOff"><value>Desactivada</value></data>
+  <data name="Outgoing_ModeExplicit"><value>Solo mensajes con /tl</value></data>
+  <data name="Outgoing_ModeAuto"><value>Traducir todo lo que escribo</value></data>
+  <data name="Outgoing_ModeOffTip"><value>No se traduce nada de lo que escribes; /tl está desactivado.</value></data>
+  <data name="Outgoing_ModeExplicitTip"><value>Lo que escribes se envía tal cual. Usa /tl &lt;mensaje&gt; para traducir uno.</value></data>
+  <data name="Outgoing_ModeAutoTip"><value>Cada línea que escribes se traduce antes de enviarse. Los comandos nunca se traducen.</value></data>
 </root>
 
 

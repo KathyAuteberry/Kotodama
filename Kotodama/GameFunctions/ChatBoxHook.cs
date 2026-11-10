@@ -7,6 +7,7 @@ using Dalamud.Hooking;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
+using EchoXIV.Outgoing;
 using EchoXIV.Services;
 using EchoXIV;
 
@@ -94,19 +95,24 @@ namespace EchoXIV.GameFunctions
         {
             try
             {
-                // Pass through when translation is disabled
-                if (!_configuration.TranslationEnabled)
+                var originalText = message->ToString();
+
+                // Our own pending translations always go straight through.
+                if (_incomingMessageHandler.IsPendingOutgoing(originalText, false))
                 {
                     _processChatBoxHook!.Original(uiModule, message, a4, saveToHistory);
                     return;
                 }
-                
-                var originalText = message->ToString();
-                
-                // Bypass commands, empty input, excluded texts and our own pending translations
-                if (string.IsNullOrWhiteSpace(originalText) || originalText.StartsWith("/") || 
-                    _configuration.ExcludedMessages.Contains(originalText) ||
-                    _incomingMessageHandler.IsPendingOutgoing(originalText, false))
+
+                var decision = OutgoingRouting.Decide(
+                    _configuration.OutgoingMode,
+                    originalText,
+                    _configuration.ExcludedMessages.Contains(originalText),
+                    isChannelCommand: false,
+                    hasPayload: message->AsSpan().IndexOf((byte)0x02) >= 0,
+                    queueEmpty: true);
+
+                if (decision != OutgoingDecision.Translate)
                 {
                     _processChatBoxHook!.Original(uiModule, message, a4, saveToHistory);
                     return;

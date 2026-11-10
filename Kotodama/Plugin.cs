@@ -7,6 +7,7 @@ using Dalamud.Plugin;
 using Dalamud.Interface.Windowing;
 using Dalamud.Game.Text;
 using Dalamud.Plugin.Services;
+using EchoXIV.Outgoing;
 using EchoXIV.Services;
 using EchoXIV.GameFunctions;
 using EchoXIV.UI;
@@ -187,19 +188,20 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
                 PluginInterface.LanguageChanged += OnLanguageChanged;
                 
                 // Register commands
-                CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
+                // /tl and /translate only translate; every setting lives under /kotodama.
+                CommandManager.AddHandler(CommandName, new CommandInfo(OnTranslateCommand)
                 {
-                    HelpMessage = GetResourceText("Command_HelpMessageMain", "Translate and send: /translate [message/on/off/config/help]")
+                    HelpMessage = "Translate and send: /translate [/channel] <message>"
                 });
 
-                CommandManager.AddHandler(CommandNameShort, new CommandInfo(OnCommand)
+                CommandManager.AddHandler(CommandNameShort, new CommandInfo(OnTranslateCommand)
                 {
-                    HelpMessage = GetResourceText("Command_HelpMessageShort", "Short alias for /translate")
+                    HelpMessage = "Translate and send: /tl [/channel] <message>"
                 });
 
-                CommandManager.AddHandler(ConfigCommandName, new CommandInfo(OnCommand)
+                CommandManager.AddHandler(ConfigCommandName, new CommandInfo(OnConfigCommand)
                 {
-                    HelpMessage = GetResourceText("Command_HelpMessageConfig", "Open Kotodama configuration")
+                    HelpMessage = "Kotodama settings: /kotodama [mode off|explicit|auto | chat | reset | help]"
                 });
                 
                 // Register main UI callback ("Open" opens config)
@@ -558,69 +560,96 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
             OnLogout();
         }
         
-        private void OnCommand(string command, string args)
+        /// <summary>/tl and /translate: translate the text and send it. No keywords.</summary>
+        private void OnTranslateCommand(string command, string args)
         {
-            var lowerArgs = args.ToLowerInvariant().Trim();
-            
             if (string.IsNullOrWhiteSpace(args))
             {
-                ToggleConfigUI();
+                ChatGui.Print($"Usage: {command} [/p | /fc | /t Name@World | …] <message>. Settings: /kotodama");
                 return;
             }
 
-            switch (lowerArgs)
+            if (_configuration.OutgoingMode == OutgoingMode.Off)
             {
-                case "on":
-                    _configuration.TranslationEnabled = true;
-                    _configuration.Save();
-                    ChatGui.Print(GetResourceText("Command_TranslationEnabledWithLanguages", "Translation enabled. {0} -> {1}")
-                        .Replace("{0}", _configuration.SourceLanguage.ToUpperInvariant())
-                        .Replace("{1}", _configuration.TargetLanguage.ToUpperInvariant()));
-                    break;
-                
-                case "off":
-                    _configuration.TranslationEnabled = false;
-                    _configuration.Save();
-                    ChatGui.Print(GetResourceText("Command_TranslationDisabled", "Translation disabled"));
-                    break;
-                
+                ChatGui.PrintError("[Kotodama] Outgoing translation is off. Turn it on in /kotodama or with /kotodama mode explicit.");
+                return;
+            }
+
+            TranslateAndSend(args);
+        }
+
+        /// <summary>/kotodama: settings window and plugin commands.</summary>
+        private void OnConfigCommand(string command, string args)
+        {
+            var parts = args.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            var verb = parts.Length > 0 ? parts[0].ToLowerInvariant() : string.Empty;
+
+            switch (verb)
+            {
+                case "":
                 case "config":
                 case "settings":
                     ToggleConfigUI();
                     break;
-                
+
+                case "mode":
+                    SetOutgoingModeCommand(parts.Length > 1 ? parts[1].ToLowerInvariant() : string.Empty);
+                    break;
+
                 case "chat":
                 case "c":
                     ToggleTranslatedChatWindow();
                     break;
-                
+
                 case "reset":
                     ResetTranslatedChatWindowPosition();
                     break;
-                
+
                 case "help":
                 case "?":
-                    ChatGui.Print(GetResourceText("Command_HelpHeader", "Available commands:"));
-                    ChatGui.Print(GetResourceText("Command_HelpTranslateLine", "/translate <message> - Translate to the active channel."));
-                    ChatGui.Print(GetResourceText("Command_HelpToggleLine", "/translate on/off - Toggle automatic translation."));
-                    ChatGui.Print(GetResourceText("Command_HelpConfigLine", "/translate config - Open settings."));
-                    ChatGui.Print(GetResourceText("Command_HelpChatLine", "/translate chat - Show or hide the translated chat window."));
-                    ChatGui.Print(GetResourceText("Command_HelpResetLine", "/translate reset - Reset the translated chat window position."));
+                    ChatGui.Print("Kotodama commands:");
+                    ChatGui.Print("/tl <message> - translate and send to the channel that was active when you typed it.");
+                    ChatGui.Print("/tl /p <message>, /tl /fc …, /tl /t First Last@World … - translate and send to that channel.");
+                    ChatGui.Print("/kotodama - open settings.");
+                    ChatGui.Print("/kotodama mode off|explicit|auto - outgoing translation mode.");
+                    ChatGui.Print("/kotodama chat - show or hide the translated chat window.");
+                    ChatGui.Print("/kotodama reset - reset the translated chat window position.");
                     break;
-                
-                case "input":
-                case "i":
-                     // Legacy
-                     ChatGui.Print(GetResourceText("Command_InputReplaced", "The input window was replaced. Use /tl <message>"));
-                     break;
-                
+
                 default:
-                    // Translate non-reserved commands.
-                    TranslateAndSend(args);
+                    ChatGui.PrintError($"[Kotodama] Unknown command '{verb}'. Try /kotodama help.");
                     break;
             }
         }
-        
+
+        private void SetOutgoingModeCommand(string value)
+        {
+            OutgoingMode? mode = value switch
+            {
+                "off" => OutgoingMode.Off,
+                "explicit" or "explicitonly" => OutgoingMode.ExplicitOnly,
+                "auto" or "autointercept" => OutgoingMode.AutoIntercept,
+                _ => null,
+            };
+
+            if (mode == null)
+            {
+                ChatGui.Print($"Outgoing mode: {DescribeOutgoingMode(_configuration.OutgoingMode)}. Use /kotodama mode off|explicit|auto.");
+                return;
+            }
+
+            _configuration.OutgoingMode = mode.Value;
+            _configuration.Save();
+            ChatGui.Print($"[Kotodama] Outgoing mode: {DescribeOutgoingMode(mode.Value)}.");
+        }
+
+        internal static string DescribeOutgoingMode(OutgoingMode mode) => mode switch
+        {
+            OutgoingMode.Off => "off (no outgoing translation)",
+            OutgoingMode.AutoIntercept => "auto (every typed line is translated)",
+            _ => "explicit (only /tl is translated)",
+        };
+
         private void ToggleConfigUI()
         {
             if (_configWindow != null)

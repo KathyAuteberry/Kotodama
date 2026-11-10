@@ -15,7 +15,8 @@ namespace EchoXIV
     [Serializable]
     public class Configuration : IPluginConfiguration
     {
-        private const int CurrentVersion = 1;
+        // 2: OutgoingMode replaces TranslationEnabled.
+        private const int CurrentVersion = 2;
 
         public int Version { get; set; } = CurrentVersion;
         
@@ -25,9 +26,16 @@ namespace EchoXIV
         public bool FirstRun { get; set; } = true;
         
         /// <summary>
-        /// Enables automatic translation
+        /// Legacy (config version 1) outgoing auto-translation switch. Only read once to migrate
+        /// to <see cref="OutgoingMode"/>; no longer used.
         /// </summary>
         public bool TranslationEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Outgoing translation mode. Default ExplicitOnly: typed lines are sent untouched and
+        /// only /tl is translated. Replaces <see cref="TranslationEnabled"/> (config version 2).
+        /// </summary>
+        public EchoXIV.Outgoing.OutgoingMode OutgoingMode { get; set; } = EchoXIV.Outgoing.OutgoingMode.ExplicitOnly;
         
         /// <summary>
         /// Language you write your own messages in.
@@ -256,6 +264,19 @@ namespace EchoXIV
         public bool NormalizeDefaults()
         {
             var changed = false;
+
+            if (Version < 2 && !TranslationEnabled)
+            {
+                // The user had turned outgoing translation off with the old /tl off.
+                OutgoingMode = EchoXIV.Outgoing.OutgoingMode.Off;
+                changed = true;
+            }
+
+            if (!Enum.IsDefined(OutgoingMode))
+            {
+                OutgoingMode = EchoXIV.Outgoing.OutgoingMode.ExplicitOnly;
+                changed = true;
+            }
 
             if (Version < CurrentVersion)
             {

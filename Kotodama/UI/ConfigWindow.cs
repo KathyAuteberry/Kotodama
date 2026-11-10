@@ -8,6 +8,7 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using EchoXIV.Properties;
 using Dalamud.Interface;
+using EchoXIV.Outgoing;
 using EchoXIV.Services;
 
 namespace EchoXIV.UI;
@@ -200,6 +201,12 @@ public class ConfigWindow : Window, IDisposable
         if (child)
         {
             ImGui.TextWrapped(Resources.General_Description);
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            DrawOutgoingModeSelector();
+
             ImGui.Spacing();
             ImGui.Separator();
             ImGui.Spacing();
@@ -556,6 +563,42 @@ public class ConfigWindow : Window, IDisposable
 
             ImGui.EndTable();
         }
+    }
+
+    private static readonly OutgoingMode[] OutgoingModes = { OutgoingMode.Off, OutgoingMode.ExplicitOnly, OutgoingMode.AutoIntercept };
+
+    private void DrawOutgoingModeSelector()
+    {
+        string ModeLabel(OutgoingMode mode) => mode switch
+        {
+            OutgoingMode.Off => Text("Outgoing_ModeOff", "Off"),
+            OutgoingMode.AutoIntercept => Text("Outgoing_ModeAuto", "Translate everything I type"),
+            _ => Text("Outgoing_ModeExplicit", "Only /tl messages"),
+        };
+
+        ImGui.Text(Text("Outgoing_Mode", "Outgoing translation"));
+        ImGui.SetNextItemWidth(280);
+        using (var combo = ImRaii.Combo("##OutgoingMode", ModeLabel(_configuration.OutgoingMode)))
+        {
+            if (combo)
+            {
+                foreach (var mode in OutgoingModes)
+                {
+                    if (ImGui.Selectable(ModeLabel(mode), mode == _configuration.OutgoingMode))
+                    {
+                        _configuration.OutgoingMode = mode;
+                        _configuration.Save();
+                    }
+                }
+            }
+        }
+
+        ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1f), _configuration.OutgoingMode switch
+        {
+            OutgoingMode.Off => Text("Outgoing_ModeOffTip", "Nothing you type is translated; /tl is disabled."),
+            OutgoingMode.AutoIntercept => Text("Outgoing_ModeAutoTip", "Every line you type is translated before it is sent. Commands are never translated."),
+            _ => Text("Outgoing_ModeExplicitTip", "Lines you type are sent as written. Use /tl <message> to translate one."),
+        });
     }
 
     private static readonly FallbackPolicy[] FallbackPolicies = { FallbackPolicy.None, FallbackPolicy.LocalOnly, FallbackPolicy.Any };

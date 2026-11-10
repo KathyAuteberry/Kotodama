@@ -793,6 +793,13 @@
     <data name="Engines_BlockedNotConfigured"><value>Translation is off: the primary engine has no server URL yet. Enter it in /kotodama → Engines.</value></data>
     <data name="Welcome_LocalOnly"><value>Kotodama translates with your own local AI server and never uses cloud services unless you allow them. Enter your server URL in /kotodama → Engines.</value></data>
     <data name="ChatWindow_NotTranslated"><value>(not translated)</value></data>
+    <data name="Outgoing_Mode"><value>Outgoing translation</value></data>
+    <data name="Outgoing_ModeOff"><value>Off</value></data>
+    <data name="Outgoing_ModeExplicit"><value>Only /tl messages</value></data>
+    <data name="Outgoing_ModeAuto"><value>Translate everything I type</value></data>
+    <data name="Outgoing_ModeOffTip"><value>Nothing you type is translated; /tl is disabled.</value></data>
+    <data name="Outgoing_ModeExplicitTip"><value>Lines you type are sent as written. Use /tl &lt;message&gt; to translate one.</value></data>
+    <data name="Outgoing_ModeAutoTip"><value>Every line you type is translated before it is sent. Commands are never translated.</value></data>
 </root>
 
 
