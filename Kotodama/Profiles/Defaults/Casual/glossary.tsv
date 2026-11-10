@@ -1,0 +1,13 @@
+# Kotodama Casual glossary. Columns (tab-separated): ja, en, note, direction
+#   en:        English term; extra spellings after |, the first one is used for JA→EN
+#   note:      for you only, never sent to the model
+#   direction: both (default), ja-en or en-ja
+ja	en	note	direction
+FC	FC	free company
+LS	LS	linkshell
+ルレ	roulette|roulettes	duty roulette
+メインクエスト	MSQ|main story	main scenario quest
+ハウジング	housing
+マケボ	market board|MB
+ギル	gil
+ミラプリ	glamour|glam	glamour

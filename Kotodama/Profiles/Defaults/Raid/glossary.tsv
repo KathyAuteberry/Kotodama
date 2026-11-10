@@ -1,0 +1,92 @@
+# Kotodama Raid glossary. Columns (tab-separated): ja, en, note, direction
+#   en:        English term; extra spellings after |, the first one is used for JA→EN
+#   note:      for you only, never sent to the model
+#   direction: both (default), ja-en or en-ja
+# Targets must be plain terms, never explanations or whole sentences.
+ja	en	note	direction
+# Roles and markers (kept as written)
+MT	MT	main tank
+ST	ST	off tank
+H1	H1	healer 1
+H2	H2	healer 2
+D1	D1	DPS 1
+D2	D2	DPS 2
+D3	D3	DPS 3
+D4	D4	DPS 4
+タンク	tank|tanks
+ヒラ	healer|healers	PF shorthand for ヒーラー
+# Jobs (Japanese names → abbreviations; English full names → Japanese)
+ナイト	PLD	Paladin	ja-en
+ナイト	Paladin		en-ja
+戦士	WAR	Warrior	ja-en
+戦士	Warrior		en-ja
+暗黒騎士	DRK	Dark Knight	ja-en
+暗黒	DRK	short for 暗黒騎士	ja-en
+暗黒騎士	Dark Knight		en-ja
+ガンブレ	GNB	Gunbreaker	ja-en
+ガンブレイカー	Gunbreaker		en-ja
+白魔	WHM	White Mage	ja-en
+白魔道士	White Mage		en-ja
+学者	SCH	Scholar
+占星	AST	Astrologian	ja-en
+占星術師	Astrologian		en-ja
+賢者	SGE	Sage	ja-en
+モンク	MNK	Monk
+竜騎士	DRG	Dragoon
+忍者	NIN	Ninja
+リーパー	RPR	Reaper
+ヴァイパー	VPR	Viper
+詩人	BRD	Bard	ja-en
+吟遊詩人	Bard		en-ja
+機工士	MCH	Machinist
+踊り子	DNC	Dancer
+黒魔	BLM	Black Mage	ja-en
+黒魔道士	Black Mage		en-ja
+召喚	SMN	Summoner	ja-en
+召喚士	Summoner		en-ja
+赤魔	RDM	Red Mage	ja-en
+赤魔道士	Red Mage		en-ja
+ピクト	PCT	Pictomancer	ja-en
+ピクトマンサー	Pictomancer		en-ja
+# Mitigation and cooldowns
+軽減	mitigation|mit|mits	damage reduction cooldowns
+無敵	invuln|invulnerability|invul	tank invulnerability
+牽制	Feint	melee mitigation
+アドル	Addle	caster mitigation
+アムレン	Arm's Length	knockback immunity
+堅実	Surecast	knockback immunity (casters/healers)
+リビデ	Living Dead	DRK invuln
+インビン	Hallowed Ground	PLD invuln
+ボルダー	Holmgang	WAR invuln
+ボーライド	Superbolide	GNB invuln
+リプライザル	Reprisal
+蘇生	raise|rez|res
+バフ	buff|buffs
+デバフ	debuff|debuffs
+# Damage types
+全体攻撃	raidwide|raid-wide|raidwides
+強攻撃	tankbuster|tank buster|buster	tank buster
+範囲	AoE|AoEs
+ドーナツ	donut
+# Mechanics
+頭割り	stack|stacks|stacking	shared damage
+ペア頭割り	pair stack|partner stack|pair stacks
+散開	spread|spreads|spreading
+塔	tower|towers
+塔踏み	tower soak	ja-en
+誘導	bait|baits|baiting
+ノックバック	knockback|kb
+薙ぎ払い	cleave|cleaves
+タゲサ	hitbox|target circle|target ring	boss target circle
+外周	arena edge|outer edge	outside ring of the arena
+南基準	south-relative|relative to south
+時計回り	clockwise
+反時計回り	counterclockwise|counter-clockwise|anticlockwise
+光	light	encounter element	en-ja
+闇	dark	encounter element	en-ja
+フェーズ	phase|phases
+# Consumables and party logistics
+ご飯	food|food buff	consumable buff
+薬	pot|pots|potion|tincture	damage potion
+全滅	wipe|wiped
+落ちる	crash|crashed|disconnect|disconnected|dc	game crash or disconnect	en-ja

@@ -1,0 +1,1 @@
+Write Japanese the way players type in Japanese Party Finder: short, polite but relaxed (〜お願いします, すみません), roles addressed with さん (ヒラさん, タンクさん, D1さん), and standard PF terms (軽減, 無敵, 頭割り, 散開, 塔, ご飯, 薬). Avoid literary or textbook phrasing and avoid katakana loanwords where PF uses a Japanese term. A player who disconnects or whose game crashes has 落ちた.

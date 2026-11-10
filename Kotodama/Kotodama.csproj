@@ -21,6 +21,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Default translation profiles, installed into the plugin config folder (never overwriting edits). -->
+    <EmbeddedResource Include="Profiles\Defaults\**\*" LogicalName="Kotodama.Profiles/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="Properties\Languages.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

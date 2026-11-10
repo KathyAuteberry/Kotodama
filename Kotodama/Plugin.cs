@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Dalamud.Game.Command;
@@ -57,6 +58,7 @@ namespace EchoXIV
         // Shared by every PLaMo instance; owns its HttpClient and is disposed on unload.
         private readonly Plamo.PlamoClient _plamoClient = new();
         private string? _lastPlamoWarmUpKey;
+        private string _profilesRoot = string.Empty;
         // Fallback translator for the incoming/outgoing failover paths. Comes only from
         // EngineSelection (never a hardcoded cloud engine); null when the policy allows no fallback.
         private ITranslationService? _secondaryTranslator;
@@ -103,6 +105,14 @@ namespace EchoXIV
                 // Initialize new services
                 _glossaryService = new GlossaryService(PluginInterface.GetPluginConfigDirectory());
                 _translationCache = new TranslationCache(PluginInterface.GetPluginConfigDirectory());
+
+                // Default profiles: created only where missing, so user edits survive upgrades.
+                _profilesRoot = Path.Combine(PluginInterface.GetPluginConfigDirectory(), "profiles");
+                var install = Profiles.ProfileInstaller.Install(_profilesRoot, DefaultProfiles.Load());
+                foreach (var created in install.Created)
+                    PluginLog.Info($"Created default profile file {created}");
+                foreach (var error in install.Errors)
+                    PluginLog.Warning($"Could not install default profile file: {error}");
 
                 _showWelcomeWindow = _configuration.FirstRun;
                 if (_showWelcomeWindow)
