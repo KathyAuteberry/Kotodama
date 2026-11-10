@@ -13,7 +13,7 @@ public class WelcomeWindow : Window
     public event Action? OnConfigurationComplete;
 
     public WelcomeWindow(Configuration configuration)
-        : base($"{Resources.PluginName} - {Resources.WelcomeWindow_Title}###WelcomeWindow")
+        : base($"{Resources.PluginName} - {Resources.WelcomeWindow_Title}###KotodamaWelcomeWindow")
     {
         _configuration = configuration;
 

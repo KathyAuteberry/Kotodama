@@ -1,0 +1,17 @@
+{
+  "Author": "Kathy Auteberry (fork of EchoXIV by ssalazar217)",
+  "Name": "Kotodama",
+  "InternalName": "Kotodama",
+  "ApplicableVersion": "any",
+  "Description": "Kotodama is a personal fork of EchoXIV focused on fast, accurate Japanese<->English chat translation for Japanese PF raiding and everyday social chat, powered by a local LLM.\n\nBased on EchoXIV by ssalazar217: https://github.com/ssalazar217/EchoXIV",
+  "RepoUrl": "https://github.com/KathyAuteberry/Kotodama",
+  "Tags": [
+    "chat",
+    "translation",
+    "translator",
+    "japanese",
+    "language"
+  ],
+  "Punchline": "Japanese<->English chat translation with a local LLM. Fork of EchoXIV.",
+  "AcceptsFeedback": false
+}

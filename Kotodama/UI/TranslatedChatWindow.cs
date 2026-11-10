@@ -28,7 +28,7 @@ namespace EchoXIV.UI
         public bool IsOnMainScreen => _isOnMainScreen;
 
         public TranslatedChatWindow(Configuration configuration, MessageHistoryManager historyManager)
-            : base(Resources.ChatWindow_Title + "###TranslatedChatWindow")
+            : base(Resources.ChatWindow_Title + "###KotodamaTranslatedChatWindow")
         {
             _configuration = configuration;
             _historyManager = historyManager;

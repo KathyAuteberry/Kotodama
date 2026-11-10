@@ -9,7 +9,8 @@
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <LangVersion>latest</LangVersion>
-    <AssemblyName>EchoXIV</AssemblyName>
+    <AssemblyName>Kotodama</AssemblyName>
+    <!-- Kept as EchoXIV: embedded resource names (EchoXIV.Properties.Resources) depend on it. -->
     <RootNamespace>EchoXIV</RootNamespace>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <PackageIcon>images/icon.png</PackageIcon>

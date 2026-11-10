@@ -36,7 +36,7 @@ public class ConfigWindow : Window, IDisposable
     private string _geminiModelsFilter = "";
 
     public ConfigWindow(Configuration configuration, MessageHistoryManager historyManager) 
-        : base($"{Resources.PluginName} - {Resources.ConfigWindow_Title}###ConfigWindow")
+        : base($"{Resources.PluginName} - {Resources.ConfigWindow_Title}###KotodamaConfigWindow")
     {
         _configuration = configuration;
         _lastSavedFingerprint = GetFingerprint(_configuration);

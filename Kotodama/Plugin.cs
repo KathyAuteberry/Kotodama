@@ -30,7 +30,7 @@ namespace EchoXIV
         public static FontManager? FontManager { get; private set; }
         private const string CommandName = "/translate";
         private const string CommandNameShort = "/tl";
-        private const string ConfigCommandName = "/echoxiv";
+        private const string ConfigCommandName = "/kotodama";
         
         [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
         [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
@@ -119,7 +119,7 @@ namespace EchoXIV
                 UpdateTranslationService();
                 
                 // Initialize window system
-                _windowSystem = new WindowSystem("EchoXIV");
+                _windowSystem = new WindowSystem("Kotodama");
                 
 
                 // Create config window
@@ -196,7 +196,7 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
 
                 CommandManager.AddHandler(ConfigCommandName, new CommandInfo(OnCommand)
                 {
-                    HelpMessage = GetResourceText("Command_HelpMessageConfig", "Open EchoXIV configuration")
+                    HelpMessage = GetResourceText("Command_HelpMessageConfig", "Open Kotodama configuration")
                 });
                 
                 // Register main UI callback ("Open" opens config)

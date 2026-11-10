@@ -24,7 +24,7 @@ internal static class TranslationDefaults
 
 internal static class EchoXIVClient
 {
-    public static string UserAgent => $"EchoXIV/{GetVersion()}";
+    public static string UserAgent => $"Kotodama/{GetVersion()}";
 
     private static string GetVersion()
     {
