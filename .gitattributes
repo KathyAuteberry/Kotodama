@@ -1,0 +1,6 @@
+# Byte-exact data: Windows checkouts (CI runners) must not convert these to CRLF.
+# The golden prompts are compared byte for byte, and the default profiles are embedded in the
+# plugin and sent to PLaMo as written.
+tests/Kotodama.Tests/Golden/** text eol=lf
+bench/*.tsv text eol=lf
+Kotodama/Profiles/Defaults/** text eol=lf
