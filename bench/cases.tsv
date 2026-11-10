@@ -1,0 +1,49 @@
+id	direction	source	reference	note
+JP01	jp-en	軽減お願いします	Please use mitigation.	FFXIV damage-reduction cooldowns, not generic lowering
+JP02	jp-en	軽減足りてないかも	We might not have enough mitigation.	Mitigation coverage, not price/weight
+JP03	jp-en	MT無敵受けで	MT should take it with invulnerability.	Tank invulnerability strategy
+JP04	jp-en	頭割りはボス背面で	Stack behind the boss.	Stack mechanic
+JP05	jp-en	南基準でお願いします	Please use south-relative positions.	South as directional reference
+JP06	jp-en	時計回りじゃなくて反時計回りです	Counterclockwise, not clockwise.	Direction is critical
+JP07	jp-en	塔踏み忘れましたすみません；；	Sorry, I forgot to soak the tower ;;	Tower mechanic, apology
+JP08	jp-en	D1とD2逆です	D1 and D2 are swapped.	Preserve role markers
+JP09	jp-en	デバフ見てから散開で	Check your debuffs before spreading.	Debuff-dependent spreads
+JP10	jp-en	ここアムレン使わないで	Don't use Arm's Length here.	アムレン = Arm's Length (anti-knockback)
+JP11	jp-en	タゲサ内で捨てて	Drop it inside the boss hitbox.	タゲサ = targeting ring/hitbox
+JP12	jp-en	ペア頭割り相方いません	My partner isn't here for the pair stack.	Partner stack mechanic
+JP13	jp-en	外周見て判断してください	Look at the arena edge to determine it.	Environmental mechanic tell
+JP14	jp-en	さっきのは気のせいでした	Never mind, I was mistaken earlier.	Natural conversational meaning
+JP15	jp-en	蘇生飛ばしてます	I'm sending a raise.	Healer resurrection call
+JP16	jp-en	ご飯切れてる人いませんか	Has anyone's food buff expired?	Food buff, not literal food
+JP17	jp-en	薬2回目ここでお願いします	Please use your second potion here.	Damage potion timing
+JP18	jp-en	少し確認させてください	Let me quickly check something.	Polite short request
+JP19	jp-en	【よろしくお願いします】	【よろしくお願いします】	EchoXIV prompt preserves auto-translate brackets verbatim
+JP20	jp-en	/p MT無敵、ST誘導お願いします	/p MT invuln, ST please reposition the boss.	Preserve /p, MT, ST
+JP21	jp-en	右寄りで	Stay toward the right.	Positional shorthand
+JP22	jp-en	倒し切れそうなら殴り続けてください	If we can finish it, keep attacking.	DPS judgment call
+JP23	jp-en	P5の散開場所もう一度教えてください	Can you explain the P5 spread positions again?	Preserve P5
+JP24	jp-en	全体前に牽制お願いします	Please use Feint before the raidwide.	牽制 = Feint (melee mitigation)
+EN01	en-jp	I'll MT; PLD can ST.	私がMTやります、PLDさんSTお願いします！	Natural JP PF tank roles
+EN02	en-jp	Sorry, my mitigation was late.	すみません、軽減遅れました。	Raid-specific mitigation
+EN03	en-jp	Can we use south-relative positions?	南基準でいいですか？	南基準 jargon
+EN04	en-jp	I'm not sure if we can balance the boss HP in time.	ボスのHP調整が間に合うか分からなくて…	Boss HP balancing
+EN05	en-jp	Please make sure your food hasn't expired.	ご飯切れてないか確認お願いします。	Food buff shorthand
+EN06	en-jp	I forgot the clock spots, can I review quickly?	時計散開忘れたので、少し確認してもいいですか？	Clock positions
+EN07	en-jp	I thought it was a stack but it was a spread.	頭割りだと思ったけど散開でした。	Avoid generic stacking
+EN08	en-jp	That was close! ;w;	危なかった！；ｗ；	Emotive chat tone
+EN09	en-jp	Could I get Sprint for Fulgent Blade?	フルジェントブレードでスプリントお願いできますか？	Preserve encounter mechanic name
+EN10	en-jp	I'll use Living Dead for the second tankbuster.	2回目の強攻撃はリビデで受けます。	DRK invulnerability cooldown
+EN11	en-jp	Let's hold DPS to align the kill.	討伐タイミング合わせるために火力抑えましょう。	Hold DPS intentionally
+EN12	en-jp	Thanks for having us! Let's play again sometime!	ご一緒できて楽しかったです！また遊びましょう！	Friendly PF exit
+EN13	en-jp	Sorry, I died to the donut AoE.	すみません、ドーナツ範囲で死にました。	Donut AoE
+EN14	en-jp	Was that clockwise or counterclockwise?	時計回りでしたか？反時計回りでしたか？	Unambiguous directions
+EN15	en-jp	If the first cleave is light, I'll go in.	最初の薙ぎ払いが光なら内側に行きます。	Light/dark mechanic
+EN16	en-jp	Healers, could you raise D2 please?	ヒラさん、D2の蘇生お願いします。	Raise D2, not DPS
+EN17	en-jp	I went north instead of south, sorry.	南じゃなくて北に行ってしまいました、すみません。	Admit positional mistake
+EN18	en-jp	I'll check the replay after this pull.	この回終わったらリプレイ確認します。	Pull means attempt
+EN19	en-jp	Does D1 take the far tower?	D1は遠い塔担当ですか？	Tower assignment
+EN20	en-jp	Please wait, my game crashed.	すみません、ゲームが落ちました。少々お待ちください。	Short concise status
+EN21	en-jp	You can just call me Kath.	Kathって呼んでください！	Proper name unchanged
+EN22	en-jp	/p Stack at C, then spread!	/p Cで頭割り、その後散開！	Preserve /p command and C marker
+EN23	en-jp	My bad, I thought that was enough damage.	すみません、火力足りると思ってました。	Natural apology
+EN24	en-jp	Is this Mana strat or Elemental strat?	これマナ式ですか？エレメンタル式ですか？	JP strategy naming

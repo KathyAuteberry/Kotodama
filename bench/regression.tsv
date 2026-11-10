@@ -1,0 +1,8 @@
+id	bench_id	direction	source	wrong_output	expected	note
+RG01	JP15	jp-en	蘇生飛ばしてます	Skipping raise	I'm sending a raise.	Meaning was reversed; 飛ばす = cast toward someone here
+RG02	JP03	jp-en	MT無敵受けで	MT tank invulnerability take/soak a hit	MT takes it with invuln.	Explanatory glossary targets leaked verbatim
+RG03	EN05	en-jp	Please make sure your food hasn't expired.	食品の賞味期限…	ご飯切れてないか確認お願いします	Food buff, not perishable food
+RG04	EN21	en-jp	You can just call me Kath.	キャス…	Kath stays as written	Names are not transliterated
+RG05	EN15	en-jp	If the first cleave is light, I'll go in.	切り込みが浅ければ…	光 = the light element; 内側に入る	Light is an encounter element, go in = move inside
+RG06	EN19	en-jp	Does D1 take the far tower?	奥の塔を攻めますか	遠い塔担当ですか	Take = soak/assignment, not attack
+RG07	EN20	en-jp	Please wait, my game crashed.	ゲームがクラッシュしました	ゲームが落ちました	Natural JP gaming register
