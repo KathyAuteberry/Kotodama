@@ -1114,8 +1114,14 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
             var selection = EngineSelection.Select(_configuration.Engines, _configuration.PrimaryEngineId, _configuration.FallbackPolicy, IsEngineConfigured);
             ReportSelectionBlock(selection);
             var ordered = new List<(Guid Id, ITranslationService Translator, string DisplayName)>();
+            var cacheVariants = new Dictionary<Guid, string>();
             foreach (var instance in selection.Engines)
             {
+                // Local AI reads its model from the global setting; other engines from the instance.
+                cacheVariants[instance.Id] = CacheKey.Variant(
+                    instance.Type,
+                    instance.Type == TranslationEngine.LocalAI ? _configuration.LocalAiModel : instance.Model);
+
                 ITranslationService svc;
                 switch (instance.Type)
                 {
@@ -1152,7 +1158,8 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
                 ordered,
                 _configuration.EngineRecoveryCheckMinutes,
                 PluginLog,
-                _shutdownCts.Token);
+                _shutdownCts.Token,
+                cacheVariants);
 
             if (_configuration.VerboseLogging)
                 PluginLog.Info($"Translation engine active: {_configuration.PrimaryInstanceName}");
@@ -1292,7 +1299,7 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
             if (nowMs - _lastCacheSaveMs >= 30_000)
             {
                 _lastCacheSaveMs = nowMs;
-                _translationCache.Save();
+                _translationCache.SaveInBackground();
             }
         }
 

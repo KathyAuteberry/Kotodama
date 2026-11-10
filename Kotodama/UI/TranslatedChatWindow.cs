@@ -74,6 +74,7 @@ namespace EchoXIV.UI
                     existing.TranslatedText = message.TranslatedText;
                     existing.RomanizedText = message.RomanizedText;
                     existing.OriginalScript = message.OriginalScript;
+                    existing.TranslationFailed = message.TranslationFailed;
                     existing.IsTranslating = false;
                 }
                 else
@@ -384,6 +385,12 @@ namespace EchoXIV.UI
                     }
                     
                     ImGui.TextColored(channelColor, senderPart + displayText);
+                    if (message.TranslationFailed)
+                    {
+                        ImGui.SameLine();
+                        ImGui.TextColored(new Vector4(1f, 0.45f, 0.45f, 1f),
+                            Resources.ResourceManager.GetString("ChatWindow_NotTranslated", Resources.Culture) ?? "(not translated)");
+                    }
                 }
             }
 
@@ -532,7 +539,7 @@ namespace EchoXIV.UI
             {
                 total = _messages.Count;
                 toRetry = _messages
-                    .Where(m => m.IsTranslating || string.IsNullOrEmpty(m.TranslatedText))
+                    .Where(m => m.IsTranslating || m.TranslationFailed || string.IsNullOrEmpty(m.TranslatedText))
                     .ToList();
             }
 

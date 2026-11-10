@@ -16,10 +16,14 @@
   -->
   <ItemGroup>
     <Compile Include="../../Kotodama/Core/**/*.cs" Link="Core/%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- Dalamud-free plugin services that are worth testing directly (Newtonsoft only). -->
+    <Compile Include="../../Kotodama/Services/TranslationCache.cs" Link="Services/TranslationCache.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.0" />
+    <!-- Same version the plugin ships (Kotodama/packages.lock.json). -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" PrivateAssets="all" />
     <PackageReference Include="GitHubActionsTestLogger" Version="3.0.5" PrivateAssets="all" />

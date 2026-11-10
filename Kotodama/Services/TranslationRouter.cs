@@ -13,6 +13,9 @@ namespace EchoXIV.Services;
 /// Sick instances are skipped and probed periodically; each recovers
 /// independently once it responds again.
 /// </summary>
+/// <summary>A translation plus the engine instance that produced it.</summary>
+public readonly record struct RoutedTranslation(string Text, Guid InstanceId);
+
 public class TranslationRouter : ITranslationService, ICombinedTranslator
 {
     public string Name => "Translation Router";
@@ -22,6 +25,7 @@ public class TranslationRouter : ITranslationService, ICombinedTranslator
     private readonly TimeSpan _recoveryInterval;
     private readonly IPluginLog? _log;
     private readonly CancellationToken _lifetime;
+    private readonly IReadOnlyDictionary<Guid, string> _cacheVariants;
 
     private readonly object _gate = new();
     private readonly HashSet<Guid> _sick = new();
@@ -114,14 +118,23 @@ public class TranslationRouter : ITranslationService, ICombinedTranslator
         IReadOnlyList<(Guid Id, ITranslationService Translator, string DisplayName)> engines,
         int recoveryCheckMinutes = 10,
         IPluginLog? log = null,
-        CancellationToken lifetime = default)
+        CancellationToken lifetime = default,
+        IReadOnlyDictionary<Guid, string>? cacheVariants = null)
     {
         _primaryId = primaryId;
         _engines = engines.ToList();
         _recoveryInterval = TimeSpan.FromMinutes(Math.Max(1, recoveryCheckMinutes));
         _log = log;
         _lifetime = lifetime;
+        _cacheVariants = cacheVariants ?? new Dictionary<Guid, string>();
     }
+
+    /// <summary>Cache variant of the primary instance; use it for cache lookups before translating.</summary>
+    public string PrimaryCacheVariant => CacheVariantFor(_primaryId);
+
+    /// <summary>Cache variant for an instance; use the id from <see cref="RoutedTranslation"/> when caching.</summary>
+    public string CacheVariantFor(Guid instanceId) =>
+        _cacheVariants.TryGetValue(instanceId, out var variant) ? variant : "instance:" + instanceId;
 
     // Legacy ctor for callers that still pass a dictionary keyed by engine type.
     // Kept for compatibility; wraps each entry with its type name as display name.
@@ -147,8 +160,18 @@ public class TranslationRouter : ITranslationService, ICombinedTranslator
 
     public async Task<string> TranslateAsync(string text, string sourceLang, string targetLang, CancellationToken cancellationToken = default)
     {
+        return (await TranslateRoutedAsync(text, sourceLang, targetLang, cancellationToken)).Text;
+    }
+
+    /// <summary>
+    /// Translates with failover across the allowed instances and reports which one answered.
+    /// Throws <see cref="AllEnginesFailedException"/> when none did; it never returns the input
+    /// as if it were a translation.
+    /// </summary>
+    public async Task<RoutedTranslation> TranslateRoutedAsync(string text, string sourceLang, string targetLang, CancellationToken cancellationToken = default)
+    {
         if (string.IsNullOrWhiteSpace(text))
-            return text;
+            return new RoutedTranslation(text, Guid.Empty);
 
         TryStartRecoveryProbes();
 
@@ -173,7 +196,7 @@ public class TranslationRouter : ITranslationService, ICombinedTranslator
                     continue;
                 }
                 SetLastUsed(id, entry.DisplayName);
-                return result;
+                return new RoutedTranslation(result, id);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -185,7 +208,9 @@ public class TranslationRouter : ITranslationService, ICombinedTranslator
             }
         }
 
-        return text;
+        throw new AllEnginesFailedException(_engines.Count == 0
+            ? "No translation engine is available."
+            : "Every available translation engine failed.");
     }
 
     /// <summary>

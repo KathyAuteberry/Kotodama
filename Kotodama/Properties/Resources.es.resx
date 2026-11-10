@@ -789,6 +789,7 @@
   <data name="Engines_BlockedNoEngine"><value>Traducción desactivada: no hay ningún motor de traducción activado. Activa uno en /kotodama → Motores.</value></data>
   <data name="Engines_BlockedNotConfigured"><value>Traducción desactivada: el motor principal aún no tiene URL de servidor. Introdúcela en /kotodama → Motores.</value></data>
   <data name="Welcome_LocalOnly"><value>Kotodama traduce con tu propio servidor de IA local y nunca usa servicios en la nube a menos que lo permitas. Introduce la URL de tu servidor en /kotodama → Motores.</value></data>
+  <data name="ChatWindow_NotTranslated"><value>(sin traducir)</value></data>
 </root>
 
 

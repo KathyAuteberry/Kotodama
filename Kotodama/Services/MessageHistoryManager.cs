@@ -59,6 +59,7 @@ namespace EchoXIV.Services
                     existing.TranslatedText = message.TranslatedText;
                     existing.RomanizedText = message.RomanizedText;
                     existing.OriginalScript = message.OriginalScript;
+                    existing.TranslationFailed = message.TranslationFailed;
                     existing.IsTranslating = false;
                 }
                 else

@@ -63,7 +63,8 @@ Building the project on its own (`dotnet build Kotodama/Kotodama.csproj -c Debug
 ### Tests
 
 `tests/Kotodama.Tests` (xUnit, `net10.0`) has **no Dalamud references**. It compiles the files under
-`Kotodama/Core/` directly instead of referencing the plugin. Code in `Core/` must therefore stay
+`Kotodama/Core/` directly instead of referencing the plugin, plus a few Dalamud-free services that are
+listed one by one in the test `.csproj` (currently `Services/TranslationCache.cs`). Code in `Core/` must therefore stay
 Dalamud-free; if it doesn't, the test project fails to compile.
 
 ## Loading the Debug build in game

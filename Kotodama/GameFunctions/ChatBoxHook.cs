@@ -115,7 +115,8 @@ namespace EchoXIV.GameFunctions
                 if (_configuration.VerboseLogging) _pluginLog.Info($"Hook intercepted message for translation: '{originalText}'");
                 
                 // Check persistent cache
-                if (_translationCache.TryGetWithRomanization(originalText, _configuration.SourceLanguage, _configuration.TargetLanguage, out var cachedNative, out var cachedRomaji))
+                if (_translatorService is TranslationRouter cacheRouter &&
+                    _translationCache.TryGetWithRomanization(cacheRouter.PrimaryCacheVariant, originalText, _configuration.SourceLanguage, _configuration.TargetLanguage, out var cachedNative, out var cachedRomaji))
                 {
                     // Send cached romaji when still enabled
                     var textToSendCached = cachedNative!;
@@ -301,6 +302,9 @@ namespace EchoXIV.GameFunctions
                         string? romanizedFromTranslation = null;
                         var combinedRomanization = false;
                         var engineName = translator.Name;
+                        // Variant of the engine that actually answered; null means "do not cache"
+                        // (unknown origin, e.g. the legacy fallback translator).
+                        string? cacheVariant = null;
 
                         try
                         {
@@ -317,6 +321,18 @@ namespace EchoXIV.GameFunctions
                                 rawTranslation = combined.Translation;
                                 romanizedFromTranslation = combined.RomanizedText;
                                 combinedRomanization = true;
+                                if (translator is TranslationRouter combinedRouter)
+                                    cacheVariant = combinedRouter.CacheVariantFor(combinedRouter.LastUsedInstanceId);
+                            }
+                            else if (translator is TranslationRouter router)
+                            {
+                                var routed = await router.TranslateRoutedAsync(
+                                    glossaryProtection.Text,
+                                    "auto",
+                                    config.TargetLanguage,
+                                    timeout.Token);
+                                rawTranslation = routed.Text;
+                                cacheVariant = router.CacheVariantFor(routed.InstanceId);
                             }
                             else
                             {
@@ -384,18 +400,19 @@ namespace EchoXIV.GameFunctions
                             textForTooltip = translatedText;
                         }
 
-                        if (translator is TranslationRouter router &&
-                            !string.IsNullOrWhiteSpace(router.LastUsedInstanceName) &&
-                            router.LastUsedInstanceName != "?")
+                        if (translator is TranslationRouter namingRouter &&
+                            !string.IsNullOrWhiteSpace(namingRouter.LastUsedInstanceName) &&
+                            namingRouter.LastUsedInstanceName != "?")
                         {
-                            engineName = router.LastUsedInstanceName;
+                            engineName = namingRouter.LastUsedInstanceName;
                         }
                         
                         if (!string.IsNullOrEmpty(textToSend) && textToSend != context.OriginalText)
                         {
                             // Cache native + romaji pair
                             var romanjiForCache = textToSend != textForTooltip ? textToSend : null;
-                            cache.Add(context.OriginalText, config.SourceLanguage, config.TargetLanguage, translatedText, romanjiForCache);
+                            if (cacheVariant != null)
+                                cache.Add(cacheVariant, context.OriginalText, config.SourceLanguage, config.TargetLanguage, translatedText, romanjiForCache);
 
                             if (config.VerboseLogging)
                             {

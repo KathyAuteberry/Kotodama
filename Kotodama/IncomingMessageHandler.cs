@@ -26,6 +26,9 @@ public class TranslatedChatMessage
         public string Recipient { get; set; } = string.Empty;
         public bool IsTranslating { get; set; }
         public bool IsOutgoing { get; set; }
+
+        /// <summary>True when every allowed engine failed and the original text is shown instead.</summary>
+        public bool TranslationFailed { get; set; }
         public Guid Id { get; set; } = Guid.NewGuid();
 
         // Romanization fields
@@ -352,6 +355,7 @@ public class TranslatedChatMessage
             
             _pluginLog.Info($"[Retry] Starting retry for: {message.OriginalText.Substring(0, Math.Min(20, message.OriginalText.Length))}...");
             message.IsTranslating = true;
+            message.TranslationFailed = false;
             await TranslateAsync(message);
         }
 
@@ -379,9 +383,12 @@ public class TranslatedChatMessage
                     return;
                 }
 
-                // Check cache
+                // Check cache (keyed by the primary engine's variant)
+                var cacheRouter = _primaryTranslator as TranslationRouter;
+                var lookupVariant = cacheRouter?.PrimaryCacheVariant;
 
-                if (_translationCache.TryGetWithRomanization(
+                if (lookupVariant != null && _translationCache.TryGetWithRomanization(
+                        lookupVariant,
                         message.OriginalText,
                         "auto",
                         targetLanguage,
@@ -397,6 +404,7 @@ public class TranslatedChatMessage
                     if (!string.IsNullOrWhiteSpace(message.RomanizedText))
                     {
                         _translationCache.Add(
+                            lookupVariant,
                             message.OriginalText,
                             "auto",
                             targetLanguage,
@@ -417,6 +425,8 @@ public class TranslatedChatMessage
                 using var primaryTimeout = TranslationDefaults.CreateTimeoutTokenSource(_lifetimeCts.Token);
                 string translation;
                 var combinedRomanization = false;
+                // Variant of the engine that actually answered; null means "do not cache".
+                string? cacheVariant = null;
 
                 var sourceScript = NonLatinScriptDetector.Detect(message.OriginalText);
                 var sourceLanguageCode = sourceScript.ToLanguageCode();
@@ -438,6 +448,18 @@ public class TranslatedChatMessage
                     message.RomanizedText = combined.RomanizedText;
                     message.OriginalScript = combined.OriginalScript;
                     combinedRomanization = true;
+                    if (cacheRouter != null)
+                        cacheVariant = cacheRouter.CacheVariantFor(cacheRouter.LastUsedInstanceId);
+                }
+                else if (cacheRouter != null)
+                {
+                    var routed = await cacheRouter.TranslateRoutedAsync(
+                        protectedText,
+                        "auto",
+                        targetLanguage,
+                        primaryTimeout.Token);
+                    translation = routed.Text;
+                    cacheVariant = cacheRouter.CacheVariantFor(routed.InstanceId);
                 }
                 else
                 {
@@ -456,13 +478,17 @@ public class TranslatedChatMessage
                 
                 await ApplyRomanizationAsync(message, primaryTimeout.Token, !combinedRomanization);
 
-                _translationCache.Add(
-                    message.OriginalText,
-                    "auto",
-                    targetLanguage,
-                    finalTranslation,
-                    message.RomanizedText);
-                
+                if (cacheVariant != null)
+                {
+                    _translationCache.Add(
+                        cacheVariant,
+                        message.OriginalText,
+                        "auto",
+                        targetLanguage,
+                        finalTranslation,
+                        message.RomanizedText);
+                }
+
                 message.IsTranslating = false;
 
                 if (_configuration.VerboseLogging)
@@ -499,7 +525,7 @@ public class TranslatedChatMessage
                         await ApplyRomanizationAsync(message, secondaryTimeout.Token);
                         message.IsTranslating = false;
                         OnMessageTranslated?.Invoke(message);
-                        _translationCache.Add(message.OriginalText, "auto", targetLanguage, finalTranslation, message.RomanizedText);
+                        // Not cached: the secondary is a fallback whose output must not be served as the primary's.
                         OnRequestEngineFailover?.Invoke();
                         return;
                     }
@@ -510,8 +536,7 @@ public class TranslatedChatMessage
                     }
                 }
 
-                message.TranslatedText = message.OriginalText;
-                message.IsTranslating = false;
+                MarkFailed(message);
                 OnMessageTranslated?.Invoke(message);
             }
             catch (TranslationRateLimitException ex)
@@ -533,12 +558,7 @@ public class TranslatedChatMessage
                         
                         await ApplyRomanizationAsync(message, secondaryTimeout.Token);
 
-                        _translationCache.Add(
-                            message.OriginalText,
-                            "auto",
-                            targetLanguage,
-                            finalTranslation,
-                            message.RomanizedText);
+                        // Not cached: the secondary is a fallback whose output must not be served as the primary's.
                         
                         message.IsTranslating = false;
                         OnMessageTranslated?.Invoke(message);
@@ -561,18 +581,15 @@ public class TranslatedChatMessage
                     _pluginLog.Error(secondaryEx, "Error in secondary translator during failover.");
                 }
 
-                message.TranslatedText = message.OriginalText; // Final fallback
-                
+                MarkFailed(message);
                 await ApplyRomanizationAsync(message, CancellationToken.None);
-                
-                message.IsTranslating = false;
                 OnMessageTranslated?.Invoke(message);
             }
             catch (Exception ex)
             {
                 _pluginLog.Error(ex, "Error while translating incoming message.");
-                message.TranslatedText = message.OriginalText; // Fallback
-                message.IsTranslating = false;                OnMessageTranslated?.Invoke(message);
+                MarkFailed(message);
+                OnMessageTranslated?.Invoke(message);
             }
             finally
             {
@@ -586,6 +603,16 @@ public class TranslatedChatMessage
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Shows the original text, flagged as untranslated. Failures are never cached.
+        /// </summary>
+        private static void MarkFailed(TranslatedChatMessage message)
+        {
+            message.TranslatedText = message.OriginalText;
+            message.TranslationFailed = true;
+            message.IsTranslating = false;
         }
 
         private async Task ApplyRomanizationAsync(
