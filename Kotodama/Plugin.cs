@@ -204,7 +204,8 @@ namespace EchoXIV
                         RequireConfirmation = () => _configuration.OutgoingPreview,
                         ConfirmationTimeout = () => TimeSpan.FromSeconds(_configuration.OutgoingPreviewTimeoutSeconds),
                     });
-                _windowSystem.AddWindow(new PreviewWindow(_confirmationGate, () => _outgoingQueue?.PendingCount ?? 0));
+                var chatTwoInput = new GameFunctions.ChatTwoInput(PluginInterface, PluginLog);
+                _windowSystem.AddWindow(new PreviewWindow(_confirmationGate, () => _outgoingQueue?.PendingCount ?? 0, chatTwoInput.IsFocusedAndEmpty));
                 _previewKeyHandler = new GameFunctions.PreviewKeyHandler(Framework, KeyState, _confirmationGate, () => _imGuiWantsText, PluginLog);
 
                 // Initialize native hook (outgoing translation)

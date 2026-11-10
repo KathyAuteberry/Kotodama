@@ -112,6 +112,10 @@ top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected
   - **Fixed, retest with ChatTwo:** Enter/Esc are now read from the game's key state and hidden from the game while a
     preview is up, so they work whichever window has focus. While you're typing in a chat input, Enter/Esc stay with
     the input and don't answer the preview. Check that Enter doesn't open ChatTwo's input and Esc doesn't open the menu.
+  - Retest: ChatTwo still took Enter, because it keeps its input focused after sending. Now an **empty** focused ChatTwo
+    input (read over ChatTwo's `GetChatInputState` IPC) no longer counts as typing, so Enter/Esc answer the preview.
+    Once you type something into ChatTwo, Enter goes to ChatTwo again. If it still fails, check `/xllog` for a
+    "ChatTwo input state IPC" warning.
 - [ ] Send two `/tl` lines and a normal line quickly. Only the first preview shows ("2 more waiting"); the normal
       line waits until you answer.
 - [ ] Leave a preview alone: after the preview timeout it closes and nothing is sent, even with Send my original

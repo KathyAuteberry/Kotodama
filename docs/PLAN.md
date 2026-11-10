@@ -240,7 +240,9 @@ Why P2 before P1:
 - **After in-game testing.** With ChatTwo, ImGui focus wasn't enough: the game still saw Enter and opened chat.
   `GameFunctions/PreviewKeyHandler.cs` now reads Enter/Esc from `IKeyState` on the framework thread and clears them
   while a preview is up (`Core/Outgoing/PreviewKeyTracker.cs` holds the rules: fresh press only, nothing while a text
-  input is active, a key that answered stays hidden until released).
+  input is active, a key that answered stays hidden until released). ChatTwo also keeps its own input focused after
+  sending, so `GameFunctions/ChatTwoInput.cs` asks ChatTwo over IPC whether that input is empty; an empty focused
+  input doesn't count as typing, and the preview reads Enter/Esc from ImGui's global key state.
 
 ---
 

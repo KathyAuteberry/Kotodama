@@ -20,15 +20,21 @@ public sealed class PreviewWindow : Window
 
     private readonly ConfirmationGate _gate;
     private readonly Func<int> _pendingCount;
+    private readonly Func<bool> _chatInputIdle;
     private PendingConfirmation? _shown;
     private DateTimeOffset _shownAt;
     private bool _focusNextFrame;
 
-    public PreviewWindow(ConfirmationGate gate, Func<int> pendingCount)
+    /// <param name="chatInputIdle">
+    /// True when the focused text input is a chat input with nothing typed (ChatTwo keeps its input
+    /// focused after sending). Enter/Esc then answer the preview instead of going to that input.
+    /// </param>
+    public PreviewWindow(ConfirmationGate gate, Func<int> pendingCount, Func<bool>? chatInputIdle = null)
         : base("Kotodama###KotodamaPreview")
     {
         _gate = gate;
         _pendingCount = pendingCount;
+        _chatInputIdle = chatInputIdle ?? (() => false);
         Flags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.AlwaysAutoResize;
         ShowCloseButton = false;
         RespectCloseHotkey = false;
@@ -117,7 +123,12 @@ public sealed class PreviewWindow : Window
             ImGui.TextColored(grey, string.Format(Text("Preview_Waiting", "{0} more waiting"), waiting));
         }
 
-        if (answer == null && ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows) && now - _shownAt >= KeyGrace)
+        // ImGui key state is global, so this works whichever window has focus: either ours, or an
+        // empty chat input (ChatTwo) that would otherwise swallow Enter. While something is typed
+        // there, the keys stay with it.
+        var keysAreOurs = ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows)
+            || (ImGui.GetIO().WantTextInput && _chatInputIdle());
+        if (answer == null && keysAreOurs && now - _shownAt >= KeyGrace)
         {
             if (ImGui.IsKeyPressed(ImGuiKey.Enter, false) || ImGui.IsKeyPressed(ImGuiKey.KeypadEnter, false))
                 answer = true;
