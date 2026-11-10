@@ -120,6 +120,9 @@ top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected
     to ChatTwo. Retest 3: the real cause was that Dalamud hands over a JObject from its own Newtonsoft assembly,
     which the plugin's Newtonsoft can't read. The value is now read from its JSON text with System.Text.Json. The
     first call logs "ChatTwo input state shape: …" at Info level.
+  - Retest 4: the log showed ChatTwo's input *unfocused* and empty while the preview was up, a case the old rule
+    didn't cover. Now Enter/Esc answer the preview unless you're actually typing (game chat input open, or a text box
+    with text in it). Possible side effect: the game may still see Enter and open ChatTwo's input afterwards.
 - [ ] Send two `/tl` lines and a normal line quickly. Only the first preview shows ("2 more waiting"); the normal
       line waits until you answer.
 - [ ] Leave a preview alone: after the preview timeout it closes and nothing is sent, even with Send my original

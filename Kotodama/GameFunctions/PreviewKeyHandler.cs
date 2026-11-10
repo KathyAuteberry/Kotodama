@@ -19,6 +19,10 @@ namespace EchoXIV.GameFunctions
         private readonly Func<bool> _imGuiTextInputActive;
         private readonly IPluginLog _log;
         private readonly PreviewKeyTracker _tracker = new();
+        private volatile bool _vanillaTextInputActive;
+
+        /// <summary>Whether the game's own text input was active at the last framework tick. Safe to read from the draw loop.</summary>
+        public bool VanillaTextInputActive => _vanillaTextInputActive;
 
         public PreviewKeyHandler(IFramework framework, IKeyState keyState, ConfirmationGate gate, Func<bool> imGuiTextInputActive, IPluginLog log)
         {
@@ -34,6 +38,7 @@ namespace EchoXIV.GameFunctions
         {
             try
             {
+                _vanillaTextInputActive = IsVanillaTextInputActive();
                 var pending = _gate.Current;
                 var enter = _keyState[VirtualKey.RETURN];
                 var escape = _keyState[VirtualKey.ESCAPE];
@@ -64,11 +69,10 @@ namespace EchoXIV.GameFunctions
             }
         }
 
-        private bool IsTextInputActive()
-        {
-            if (_imGuiTextInputActive())
-                return true;
+        private bool IsTextInputActive() => _imGuiTextInputActive() || _vanillaTextInputActive;
 
+        private static bool IsVanillaTextInputActive()
+        {
             var raptureAtk = RaptureAtkModule.Instance();
             return raptureAtk != null && raptureAtk->AtkModule.IsTextInputActive();
         }

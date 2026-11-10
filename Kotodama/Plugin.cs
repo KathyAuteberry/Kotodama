@@ -207,8 +207,12 @@ namespace EchoXIV
                         ConfirmationTimeout = () => TimeSpan.FromSeconds(_configuration.OutgoingPreviewTimeoutSeconds),
                     });
                 var chatTwoInput = new GameFunctions.ChatTwoInput(PluginInterface, PluginLog);
-                _windowSystem.AddWindow(new PreviewWindow(_confirmationGate, () => _outgoingQueue?.PendingCount ?? 0, chatTwoInput.IsFocusedAndEmpty));
                 _previewKeyHandler = new GameFunctions.PreviewKeyHandler(Framework, KeyState, _confirmationGate, () => _imGuiWantsText, PluginLog);
+                _windowSystem.AddWindow(new PreviewWindow(
+                    _confirmationGate,
+                    () => _outgoingQueue?.PendingCount ?? 0,
+                    chatTwoInput.IsFocusedAndEmpty,
+                    () => _previewKeyHandler?.VanillaTextInputActive ?? false));
                 _partyFinderMenu = new GameFunctions.PartyFinderMenu(ContextMenu, PluginLog, () => _configuration.PartyFinderTranslation, TranslatePartyFinder);
 
                 // Initialize native hook (outgoing translation)

@@ -21,6 +21,7 @@ public sealed class PreviewWindow : Window
     private readonly ConfirmationGate _gate;
     private readonly Func<int> _pendingCount;
     private readonly Func<bool> _chatInputIdle;
+    private readonly Func<bool> _vanillaTyping;
     private PendingConfirmation? _shown;
     private DateTimeOffset _shownAt;
     private bool _focusNextFrame;
@@ -30,12 +31,14 @@ public sealed class PreviewWindow : Window
     /// True when the focused text input is a chat input with nothing typed (ChatTwo keeps its input
     /// focused after sending). Enter/Esc then answer the preview instead of going to that input.
     /// </param>
-    public PreviewWindow(ConfirmationGate gate, Func<int> pendingCount, Func<bool>? chatInputIdle = null)
+    /// <param name="vanillaTyping">True while the game's own chat input is open.</param>
+    public PreviewWindow(ConfirmationGate gate, Func<int> pendingCount, Func<bool>? chatInputIdle = null, Func<bool>? vanillaTyping = null)
         : base("Kotodama###KotodamaPreview")
     {
         _gate = gate;
         _pendingCount = pendingCount;
         _chatInputIdle = chatInputIdle ?? (() => false);
+        _vanillaTyping = vanillaTyping ?? (() => false);
         Flags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.AlwaysAutoResize;
         ShowCloseButton = false;
         RespectCloseHotkey = false;
@@ -124,16 +127,18 @@ public sealed class PreviewWindow : Window
             ImGui.TextColored(grey, string.Format(Text("Preview_Waiting", "{0} more waiting"), waiting));
         }
 
-        // ImGui key state is global, so this works whichever window has focus: either ours, or an
-        // empty chat input (ChatTwo) that would otherwise swallow Enter. While something is typed
-        // there, the keys stay with it.
-        // The previous frame's answer counts too: if ChatTwo draws first, the Enter press has
-        // already unfocused its input by the time we ask.
-        var idleNow = _chatInputIdle();
+        // ImGui key state is global, so Enter/Esc are seen whichever window has focus (with
+        // ChatTwo, often none of ours). They answer the preview unless the user is typing: the
+        // game's chat input is open, or an ImGui text box is active that isn't an empty ChatTwo
+        // input (ChatTwo keeps its input focused after sending).
+        // The previous frame's ChatTwo answer counts too: if ChatTwo draws first, the Enter press
+        // has already unfocused its input by the time we ask.
+        var wantText = ImGui.GetIO().WantTextInput;
+        var idleNow = wantText && _chatInputIdle();
         var chatIdle = idleNow || _chatIdleLastFrame;
         _chatIdleLastFrame = idleNow;
-        var keysAreOurs = ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows)
-            || (ImGui.GetIO().WantTextInput && chatIdle);
+        var typing = _vanillaTyping() || (wantText && !chatIdle);
+        var keysAreOurs = ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows) || !typing;
         if (answer == null && keysAreOurs && now - _shownAt >= KeyGrace)
         {
             if (ImGui.IsKeyPressed(ImGuiKey.Enter, false) || ImGui.IsKeyPressed(ImGuiKey.KeypadEnter, false))
