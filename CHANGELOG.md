@@ -1,3 +1,10 @@
+# Kotodama 1.0.1.0 — raid macro throttle
+
+## Incoming messages
+
+- Raid macros no longer flood your chat with late translations. When one sender posts 3 lines within 3 seconds, the rest of the burst isn't translated, and a single `[KT]` line tells you translations from them are paused. Each new line from them restarts a 10-second pause, so the whole macro is skipped; translation resumes once they've been quiet for 10 seconds. Other players are never affected.
+- Settings → Incoming: **Pause senders who post bursts (raid macros)** (on by default), with sliders for the number of lines, the time window and the pause length.
+
 # Kotodama 1.0.0.0 — first release
 
 First Kotodama release: a fork of EchoXIV 1.0.2.1 by ssalazar217, rebuilt around fast Japanese ⇄ English chat translation with a local PLaMo 3 Translate model.
