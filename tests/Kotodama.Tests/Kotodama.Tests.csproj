@@ -20,6 +20,7 @@
     <Compile Include="../../Kotodama/Services/TranslationCache.cs" Link="Services/TranslationCache.cs" />
     <Compile Include="../../Kotodama/Services/ITranslationService.cs" Link="Services/ITranslationService.cs" />
     <Compile Include="../../Kotodama/Services/PlamoTranslatorService.cs" Link="Services/PlamoTranslatorService.cs" />
+    <Compile Include="../../Kotodama/Services/PlamoConnectionTest.cs" Link="Services/PlamoConnectionTest.cs" />
   </ItemGroup>
 
   <ItemGroup>

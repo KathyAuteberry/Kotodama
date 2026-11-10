@@ -1,4 +1,7 @@
-﻿using System;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Threading;
+using System;
 using System.Numerics;
 using System.Linq;
 using System.Text.Json;
@@ -36,6 +39,12 @@ public class ConfigWindow : Window, IDisposable
     private string _geminiModelsError = "";
     private string _geminiModelsFilter = "";
 
+    // PLaMo "Test connection": runs off the framework thread; the result is read while drawing.
+    private readonly EchoXIV.Plamo.PlamoClient _plamoTestClient = new();
+    private readonly CancellationTokenSource _windowLifetime = new();
+    private Task<PlamoTestResult>? _plamoTest;
+    private Guid _plamoTestInstanceId;
+
     public ConfigWindow(Configuration configuration, MessageHistoryManager historyManager) 
         : base($"{Resources.PluginName} - {Resources.ConfigWindow_Title}###KotodamaConfigWindow")
     {
@@ -49,7 +58,11 @@ public class ConfigWindow : Window, IDisposable
         Flags = ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse;
     }
 
-    public void Dispose() { }
+    public void Dispose()
+    {
+        _windowLifetime.Cancel();
+        _plamoTestClient.Dispose();
+    }
 
     public override void Draw()
     {
@@ -863,6 +876,9 @@ public class ConfigWindow : Window, IDisposable
             changed = true;
         }
 
+        ImGui.Spacing();
+        DrawPlamoConnectionTest(instance);
+
         if (changed)
         {
             // Engines are rebuilt only when the instance becomes usable or unusable; other settings
@@ -872,6 +888,45 @@ public class ConfigWindow : Window, IDisposable
                 SaveEnginesChanged();
             else
                 _configuration.Save();
+        }
+    }
+
+    private void DrawPlamoConnectionTest(EngineInstance instance)
+    {
+        var running = _plamoTest is { IsCompleted: false };
+        var canTest = !running && !string.IsNullOrWhiteSpace(instance.Endpoint);
+
+        using (ImRaii.Disabled(!canTest))
+        {
+            if (ImGui.Button(Text("Plamo_TestConnection", "Test connection") + $"##PlamoTest{instance.Id}"))
+            {
+                var settings = Plugin.PlamoSettingsFor(instance);
+                _plamoTestInstanceId = instance.Id;
+                _plamoTest = Task.Run(() => PlamoConnectionTest.RunAsync(_plamoTestClient, settings, _windowLifetime.Token));
+            }
+        }
+
+        if (running)
+        {
+            ImGui.SameLine();
+            ImGui.TextColored(new Vector4(0.8f, 0.8f, 0.2f, 1f), Text("Plamo_Testing", "Testing…"));
+        }
+
+        if (_plamoTest == null || !_plamoTest.IsCompleted || _plamoTestInstanceId != instance.Id)
+            return;
+
+        if (!_plamoTest.IsCompletedSuccessfully)
+        {
+            ImGui.TextColored(new Vector4(1f, 0.4f, 0.4f, 1f), _plamoTest.Exception?.GetBaseException().Message ?? "Cancelled");
+            return;
+        }
+
+        foreach (var step in _plamoTest.Result.Steps)
+        {
+            var color = step.Ok ? new Vector4(0.4f, 0.9f, 0.5f, 1f) : new Vector4(1f, 0.4f, 0.4f, 1f);
+            ImGui.TextColored(color, step.Ok ? "[ok]" : "[x]");
+            ImGui.SameLine();
+            ImGui.TextWrapped($"{step.Name} ({step.Elapsed.TotalMilliseconds:0} ms): {step.Detail}");
         }
     }
 

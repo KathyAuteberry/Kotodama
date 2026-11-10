@@ -15,6 +15,19 @@ public class DefaultEnginesTests
     }
 
     [Fact]
+    public void Fresh_config_is_a_plamo_instance_with_the_benchmarked_settings()
+    {
+        var plamo = Assert.Single(DefaultEngines.Create());
+
+        Assert.Equal(TranslationEngine.Plamo, plamo.Type);
+        Assert.True(plamo.Enabled);
+        Assert.Equal(EchoXIV.Plamo.PlamoSettings.DefaultModel, plamo.Model);
+        Assert.Equal(0f, plamo.Temperature);
+        Assert.Equal(192, plamo.MaxTokens);
+        Assert.Equal("30m", plamo.KeepAlive);
+    }
+
+    [Fact]
     public void Fresh_config_has_no_preconfigured_server()
     {
         var engines = DefaultEngines.Create();

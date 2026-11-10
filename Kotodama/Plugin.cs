@@ -56,6 +56,7 @@ namespace EchoXIV
         private List<ITranslationService> _instanceServices = new();
         // Shared by every PLaMo instance; owns its HttpClient and is disposed on unload.
         private readonly Plamo.PlamoClient _plamoClient = new();
+        private string? _lastPlamoWarmUpKey;
         // Fallback translator for the incoming/outgoing failover paths. Comes only from
         // EngineSelection (never a hardcoded cloud engine); null when the policy allows no fallback.
         private ITranslationService? _secondaryTranslator;
@@ -910,6 +911,8 @@ namespace EchoXIV
             var secondaryTranslator = ordered.Count > 1 ? ordered[1].Translator : null;
             _secondaryTranslator = secondaryTranslator;
 
+            WarmUpPlamoIfNeeded(selection.Primary);
+
             // Update translators (romanization always same engine)
             if (_incomingMessageHandler != null)
             {
@@ -943,6 +946,25 @@ namespace EchoXIV
             TranslationEngine.Plamo => !string.IsNullOrWhiteSpace(instance.Endpoint) && !string.IsNullOrWhiteSpace(instance.Model),
             _ => true,
         };
+
+        /// <summary>
+        /// Loads the PLaMo model in the background when it becomes the primary engine (or its
+        /// server/model/keep-alive changes), so the first real translation doesn't pay the ~3 s load.
+        /// </summary>
+        private void WarmUpPlamoIfNeeded(EngineInstance? primary)
+        {
+            if (primary?.Type != TranslationEngine.Plamo || !IsEngineConfigured(primary))
+                return;
+
+            var settings = PlamoSettingsFor(primary);
+            var key = $"{settings.BaseUrl}|{settings.Model}|{settings.KeepAlive}";
+            if (key == _lastPlamoWarmUpKey)
+                return;
+
+            _lastPlamoWarmUpKey = key;
+            var token = _shutdownCts.Token;
+            _ = Task.Run(() => PlamoConnectionTest.WarmUpAsync(_plamoClient, settings, token), token);
+        }
 
         internal static Plamo.PlamoSettings PlamoSettingsFor(EngineInstance instance) => new(
             instance.Endpoint,

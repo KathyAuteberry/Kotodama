@@ -806,6 +806,16 @@
     <data name="Outgoing_FailureSendOriginalWarning"><value>Your untranslated text will be sent to the channel when translation fails.</value></data>
     <data name="Outgoing_Timeout"><value>Translation timeout (seconds)</value></data>
     <data name="Outgoing_TimeoutTip"><value>Messages are sent in order, so later lines wait for a slow translation. Keep this short.</value></data>
+    <data name="Plamo_Description"><value>PLaMo 3 Translate on your own Ollama server. Japanese ⇄ English only.</value></data>
+    <data name="Plamo_Endpoint"><value>Server URL</value></data>
+    <data name="Plamo_Model"><value>Model</value></data>
+    <data name="Plamo_Timeout"><value>Timeout (seconds)</value></data>
+    <data name="Plamo_Temperature"><value>Temperature</value></data>
+    <data name="Plamo_KeepAlive"><value>Keep model loaded for</value></data>
+    <data name="Plamo_KeepAliveTip"><value>Ollama keep_alive, e.g. 30m or 2h. Loading the model takes about 3 seconds; keeping it loaded makes translations fast.</value></data>
+    <data name="Plamo_NumPredict"><value>Maximum output tokens</value></data>
+    <data name="Plamo_TestConnection"><value>Test connection</value></data>
+    <data name="Plamo_Testing"><value>Testing…</value></data>
 </root>
 
 
