@@ -116,6 +116,10 @@ top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected
     input (read over ChatTwo's `GetChatInputState` IPC) no longer counts as typing, so Enter/Esc answer the preview.
     Once you type something into ChatTwo, Enter goes to ChatTwo again. If it still fails, check `/xllog` for a
     "ChatTwo input state IPC" warning.
+  - Retest 2: the IPC value came back in an undocumented shape (an array), so the check gave up and Enter still went
+    to ChatTwo. Retest 3: the real cause was that Dalamud hands over a JObject from its own Newtonsoft assembly,
+    which the plugin's Newtonsoft can't read. The value is now read from its JSON text with System.Text.Json. The
+    first call logs "ChatTwo input state shape: …" at Info level.
 - [ ] Send two `/tl` lines and a normal line quickly. Only the first preview shows ("2 more waiting"); the normal
       line waits until you answer.
 - [ ] Leave a preview alone: after the preview timeout it closes and nothing is sent, even with Send my original

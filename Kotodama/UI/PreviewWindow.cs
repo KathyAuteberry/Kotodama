@@ -24,6 +24,7 @@ public sealed class PreviewWindow : Window
     private PendingConfirmation? _shown;
     private DateTimeOffset _shownAt;
     private bool _focusNextFrame;
+    private bool _chatIdleLastFrame;
 
     /// <param name="chatInputIdle">
     /// True when the focused text input is a chat input with nothing typed (ChatTwo keeps its input
@@ -126,8 +127,13 @@ public sealed class PreviewWindow : Window
         // ImGui key state is global, so this works whichever window has focus: either ours, or an
         // empty chat input (ChatTwo) that would otherwise swallow Enter. While something is typed
         // there, the keys stay with it.
+        // The previous frame's answer counts too: if ChatTwo draws first, the Enter press has
+        // already unfocused its input by the time we ask.
+        var idleNow = _chatInputIdle();
+        var chatIdle = idleNow || _chatIdleLastFrame;
+        _chatIdleLastFrame = idleNow;
         var keysAreOurs = ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows)
-            || (ImGui.GetIO().WantTextInput && _chatInputIdle());
+            || (ImGui.GetIO().WantTextInput && chatIdle);
         if (answer == null && keysAreOurs && now - _shownAt >= KeyGrace)
         {
             if (ImGui.IsKeyPressed(ImGuiKey.Enter, false) || ImGui.IsKeyPressed(ImGuiKey.KeypadEnter, false))

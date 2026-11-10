@@ -3,7 +3,7 @@ using Dalamud.Plugin;
 using Dalamud.Plugin.Ipc;
 using Dalamud.Plugin.Ipc.Exceptions;
 using Dalamud.Plugin.Services;
-using Newtonsoft.Json.Linq;
+using EchoXIV.Interop;
 
 namespace EchoXIV.GameFunctions
 {
@@ -18,6 +18,7 @@ namespace EchoXIV.GameFunctions
         private readonly ICallGateSubscriber<object>? _state;
         private readonly IPluginLog _log;
         private bool _broken;
+        private bool _loggedShape;
 
         public ChatTwoInput(IDalamudPluginInterface pluginInterface, IPluginLog log)
         {
@@ -46,11 +47,15 @@ namespace EchoXIV.GameFunctions
                 if (result == null)
                     return false;
 
-                // A boxed ValueTuple or a converted JObject both serialize as Item1..Item6.
-                var token = result as JToken ?? JToken.FromObject(result);
-                var focused = token["Item2"]?.Value<bool>() ?? false;
-                var hasText = token["Item3"]?.Value<bool>() ?? true;
-                return focused && !hasText;
+                if (!_loggedShape)
+                {
+                    _loggedShape = true;
+                    _log.Info($"ChatTwo input state shape: {ChatInputStateReader.Describe(result)}");
+                }
+
+                var state = ChatInputStateReader.TryRead(result)
+                    ?? throw new FormatException($"Expected four booleans, got: {ChatInputStateReader.Describe(result)}");
+                return state.Focused && !state.HasText;
             }
             catch (IpcNotReadyError)
             {
