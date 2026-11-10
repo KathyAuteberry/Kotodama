@@ -46,6 +46,7 @@ namespace EchoXIV
         [PluginService] internal static IPlayerState PlayerState { get; private set; } = null!;
         [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null!;
         [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
+        [PluginService] internal static IPartyList PartyList { get; private set; } = null!;
         
         private Configuration _configuration = null!;
         private ITranslationService _translatorService = null!;
@@ -62,6 +63,10 @@ namespace EchoXIV
         private Profiles.ProfileStore _profileStore = new(string.Empty);
         private FileSystemWatcher? _profileWatcher;
         private Timer? _profileReloadTimer;
+        // Names of the local player and party members, refreshed on the framework thread and read by
+        // PLaMo requests on worker threads.
+        private IReadOnlyList<string> _gameNames = Array.Empty<string>();
+        private long _lastGameNamesRefreshMs;
         // Fallback translator for the incoming/outgoing failover paths. Comes only from
         // EngineSelection (never a hardcoded cloud engine); null when the policy allows no fallback.
         private ITranslationService? _secondaryTranslator;
@@ -1010,7 +1015,9 @@ namespace EchoXIV
         /// <summary>Active profile's context and matching glossary terms for one PLaMo request (worker thread).</summary>
         private PlamoPromptExtras PlamoExtrasFor(Plamo.TranslationDirection direction, string text)
         {
-            var prompt = Profiles.ProfileStore.PromptFor(_profileStore.Get(_configuration.ActiveProfile), direction, text);
+            var keep = Volatile.Read(ref _gameNames).Concat(_configuration.KeepAsWritten.ToArray());
+            var identity = Profiles.TokenGuard.IdentityTerms(text, keep);
+            var prompt = Profiles.ProfileStore.PromptFor(_profileStore.Get(_configuration.ActiveProfile), direction, text, identity);
             return new PlamoPromptExtras(prompt.Context, prompt.Glossary, null);
         }
 
@@ -1215,6 +1222,13 @@ namespace EchoXIV
                 }
             }
 
+            // Names PLaMo must keep as written: the player and the current party (every 5 s).
+            if (Environment.TickCount64 - _lastGameNamesRefreshMs >= 5_000)
+            {
+                _lastGameNamesRefreshMs = Environment.TickCount64;
+                Volatile.Write(ref _gameNames, CollectGameNames());
+            }
+
             // Periodic translation-cache flush (no-op when clean)
             var nowMs = Environment.TickCount64;
             if (nowMs - _lastCacheSaveMs >= 30_000)
@@ -1222,6 +1236,38 @@ namespace EchoXIV
                 _lastCacheSaveMs = nowMs;
                 _translationCache.SaveInBackground();
             }
+        }
+
+        /// <summary>Full and first names of the local player and party members. Framework thread only.</summary>
+        private static IReadOnlyList<string> CollectGameNames()
+        {
+            var names = new List<string>();
+            void Add(string? fullName)
+            {
+                if (string.IsNullOrWhiteSpace(fullName))
+                    return;
+                names.Add(fullName);
+                var space = fullName.IndexOf(' ');
+                if (space > 0)
+                {
+                    names.Add(fullName[..space]);
+                    names.Add(fullName[(space + 1)..]);
+                }
+            }
+
+            try
+            {
+                if (PlayerState.IsLoaded)
+                    Add(PlayerState.CharacterName.ToString());
+                foreach (var member in PartyList)
+                    Add(member.Name.TextValue);
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Debug($"Could not read party names: {ex.Message}");
+            }
+
+            return names.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         }
 
         private long _lastLocalAiCheckMs = 0;

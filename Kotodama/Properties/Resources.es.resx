@@ -818,6 +818,8 @@
   <data name="Profile_Summary"><value>{0} entradas de glosario. PLaMo las usa para contexto y terminología.</value></data>
   <data name="Profile_Warnings"><value>{0} línea(s) de glosario ignorada(s):</value></data>
   <data name="Profile_Folder"><value>Edita los archivos en:</value></data>
+  <data name="Profile_KeepAsWritten"><value>Nombres y palabras que se mantienen tal cual (uno por línea)</value></data>
+  <data name="Profile_KeepAsWrittenTip"><value>Tu personaje y los miembros del grupo se añaden automáticamente. Añade aquí apodos.</value></data>
 </root>
 
 

@@ -821,6 +821,8 @@
     <data name="Profile_Summary"><value>{0} glossary entries. Used by PLaMo for context and terminology.</value></data>
     <data name="Profile_Warnings"><value>{0} glossary line(s) ignored:</value></data>
     <data name="Profile_Folder"><value>Edit the files in:</value></data>
+    <data name="Profile_KeepAsWritten"><value>Names and words to keep as written (one per line)</value></data>
+    <data name="Profile_KeepAsWrittenTip"><value>Your character and party members are added automatically. Add nicknames here.</value></data>
 </root>
 
 

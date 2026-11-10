@@ -133,6 +133,23 @@ public sealed class PlamoClientTests : IDisposable
     }
 
     [Fact]
+    public async Task Dropped_macro_tag_is_a_failure()
+    {
+        _handler.Respond("""{"response":"<t>で頭割り"}""");
+
+        var ex = await Assert.ThrowsAsync<PlamoUnavailableException>(() => Service().TranslateAsync("Stack on <t> <se.1>", "auto", "ja"));
+        Assert.Contains("<se.1>", ex.Message);
+    }
+
+    [Fact]
+    public async Task Kept_macro_tags_pass()
+    {
+        _handler.Respond("""{"response":"<t>で頭割り <se.1>"}""");
+
+        Assert.Equal("<t>で頭割り <se.1>", await Service().TranslateAsync("Stack on <t> <se.1>", "auto", "ja"));
+    }
+
+    [Fact]
     public async Task Http_error_is_unavailable()
     {
         _handler.Respond("""{"error":"model not found"}""", HttpStatusCode.NotFound);

@@ -717,6 +717,22 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1f), Text("Profile_Folder", "Edit the files in:"));
             ImGui.TextWrapped(ProfilesFolder);
         }
+
+        ImGui.Spacing();
+        ImGui.Text(Text("Profile_KeepAsWritten", "Names and words to keep as written (one per line)"));
+        ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1f),
+            Text("Profile_KeepAsWrittenTip", "Your character and party members are added automatically. Add nicknames here."));
+        var keep = string.Join("\n", _configuration.KeepAsWritten);
+        if (ImGui.InputTextMultiline("##KeepAsWritten", ref keep, 2000, new Vector2(-1, 80)))
+        {
+            _configuration.KeepAsWritten = keep
+                .Split('\n')
+                .Select(line => line.Trim())
+                .Where(line => line.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            _configuration.Save();
+        }
     }
 
     private static readonly FallbackPolicy[] FallbackPolicies = { FallbackPolicy.None, FallbackPolicy.LocalOnly, FallbackPolicy.Any };

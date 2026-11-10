@@ -87,6 +87,11 @@ namespace EchoXIV.Services
             if (cleaned.Length == 0)
                 throw new PlamoUnavailableException("PLaMo returned an empty translation.");
 
+            // A macro line with a missing <se.N>/<t> tag would do the wrong thing in game.
+            var dropped = EchoXIV.Profiles.TokenGuard.FindDroppedTag(text, cleaned);
+            if (dropped != null)
+                throw new PlamoUnavailableException($"PLaMo dropped the macro tag {dropped}.");
+
             return new PlamoTranslation(cleaned, direction, result.EvalCount, stopwatch.Elapsed);
         }
 

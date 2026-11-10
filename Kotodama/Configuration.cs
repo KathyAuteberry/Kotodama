@@ -183,6 +183,13 @@ namespace EchoXIV
         /// <summary>Active translation profile (folder name under profiles/), e.g. Raid or Casual.</summary>
         public string ActiveProfile { get; set; } = "Raid";
 
+        /// <summary>
+        /// Names and words PLaMo must keep exactly as written (e.g. a nickname). Your character name
+        /// and current party members are added automatically.
+        /// </summary>
+        [JsonProperty("KeepAsWritten", ObjectCreationHandling = ObjectCreationHandling.Replace)]
+        public List<string> KeepAsWritten { get; set; } = new();
+
         public bool VerboseLogging { get; set; } = false;
         public bool OverlayVisible { get; set; } = true;
 
@@ -362,6 +369,12 @@ namespace EchoXIV
             if (InactivityHideTimeout < 10 || InactivityHideTimeout > 600)
             {
                 InactivityHideTimeout = 60;
+                changed = true;
+            }
+
+            if (KeepAsWritten == null)
+            {
+                KeepAsWritten = new List<string>();
                 changed = true;
             }
 

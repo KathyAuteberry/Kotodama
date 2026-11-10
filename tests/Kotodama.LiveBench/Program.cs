@@ -61,7 +61,7 @@ foreach (var c in cases)
         ? null
         : (direction, text) =>
         {
-            var prompt = ProfileStore.PromptFor(profile, direction, text);
+            var prompt = ProfileStore.PromptFor(profile, direction, text, TokenGuard.IdentityTerms(text, options.KeepAsWritten));
             return new PlamoPromptExtras(prompt.Context, prompt.Glossary, null);
         });
     for (var run = 1; run <= options.Runs; run++)
@@ -116,7 +116,7 @@ static async Task PlamoWarmUp(PlamoClient client, PlamoSettings settings)
 
 internal sealed record BenchOptions(
     string Url, string Model, int Runs, int Limit, string Set, string Direction, string? OutputDir, int TimeoutSeconds, bool WarmUp, bool Quiet,
-    IReadOnlyList<string> Profiles, string? ProfileDir)
+    IReadOnlyList<string> Profiles, string? ProfileDir, IReadOnlyList<string> KeepAsWritten)
 {
     public static BenchOptions? Parse(string[] args)
     {
@@ -128,6 +128,7 @@ internal sealed record BenchOptions(
         bool warmUp = true, quiet = false;
         var profiles = new List<string>();
         string? profileDir = null;
+        var keep = new List<string>();
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -145,6 +146,7 @@ internal sealed record BenchOptions(
                 case "--no-warmup": warmUp = false; break;
                 case "--profile": profiles.Add(Next()); break;
                 case "--profile-dir": profileDir = Next(); break;
+                case "--keep": keep.Add(Next()); break;
                 case "--quiet": quiet = true; break;
                 case "-h":
                 case "--help":
@@ -170,7 +172,7 @@ internal sealed record BenchOptions(
         if (profiles.Count == 0)
             profiles.Add("plain");
 
-        return new BenchOptions(url, model, runs, limit, set, direction, outDir, timeout, warmUp, quiet, profiles, profileDir);
+        return new BenchOptions(url, model, runs, limit, set, direction, outDir, timeout, warmUp, quiet, profiles, profileDir, keep);
     }
 
     private static void PrintHelp() => Console.WriteLine("""
@@ -188,6 +190,7 @@ internal sealed record BenchOptions(
           --timeout SECONDS    Per-request timeout (default 90)
           --profile NAME       plain (no profile) or a profile name; repeat to compare (default: plain)
           --profile-dir DIR    Where profiles live (default: Kotodama/Profiles/Defaults)
+          --keep NAME          A name to keep as written (like the plugin's list); repeatable
           --no-warmup          Skip loading the model first
           --quiet              No per-case output
 
