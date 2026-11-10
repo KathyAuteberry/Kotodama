@@ -33,4 +33,5 @@ First Kotodama release: a fork of EchoXIV 1.0.2.1 by ssalazar217, rebuilt around
 ## Reliability
 
 - The translation cache is keyed by engine, model and profile, never stores failures, and is written off the game's main thread.
+- Incoming translations are also printed in chat as a local-only `[KT] …` line below the original (stock chat and ChatTwo). It can be turned off.
 - Incoming lines that couldn't be translated are marked "(not translated)" and can be retried.

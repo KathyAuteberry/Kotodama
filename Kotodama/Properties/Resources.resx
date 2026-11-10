@@ -834,6 +834,8 @@
     <data name="Preview_Send"><value>Send (Enter)</value></data>
     <data name="Preview_Cancel"><value>Cancel (Esc)</value></data>
     <data name="Preview_Waiting"><value>{0} more waiting</value></data>
+    <data name="Incoming_ShowInChat"><value>Show translations in chat</value></data>
+    <data name="Incoming_ShowInChatTip"><value>Prints each translation as a "[KT] …" line below the original message. Only you see it.</value></data>
 </root>
 
 

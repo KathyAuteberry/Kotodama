@@ -12,7 +12,7 @@ Built and committed locally (not pushed, not yet tested in game; see [TESTING.md
 - **F1–F3, P2.1–P2.5, P1.1–P1.6, P3.1–P3.5, P4.1–P4.6, R1, R2, R4**, plus a Kotodama README.
 - **R3** is a separate local jj change in the plogons repository: `feat(tools): support Kotodama in the manifest updater`.
 - **Not built:** P5 (design only).
-- 447 xUnit tests and 9 Python tooling tests pass. The build has 0 warnings.
+- 465 xUnit tests and 9 Python tooling tests pass. The build has 0 warnings.
 
 Deviations from the plan as written:
 
@@ -237,6 +237,10 @@ Why P2 before P1:
   failures aren't). Cancel and timeout never send the original, even with SendOriginal. The preview timeout is
   separate from the translation timeout (default 30 s, 5–120). Keys are ignored for 250 ms after a preview
   appears.
+- **After in-game testing.** With ChatTwo, ImGui focus wasn't enough: the game still saw Enter and opened chat.
+  `GameFunctions/PreviewKeyHandler.cs` now reads Enter/Esc from `IKeyState` on the framework thread and clears them
+  while a preview is up (`Core/Outgoing/PreviewKeyTracker.cs` holds the rules: fresh press only, nothing while a text
+  input is active, a key that answered stays hidden until released).
 
 ---
 

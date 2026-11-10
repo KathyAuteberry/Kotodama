@@ -85,6 +85,12 @@ namespace EchoXIV
         /// Enable incoming message translation
         /// </summary>
         public bool IncomingTranslationEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Also print each incoming translation into the game chat, as a local-only "[KT] …" line
+        /// below the original (which is left untouched). Works with the stock chat and ChatTwo.
+        /// </summary>
+        public bool ShowIncomingInChat { get; set; } = true;
         
         /// <summary>
         /// Max messages shown in the translation window

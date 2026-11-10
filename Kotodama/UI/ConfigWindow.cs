@@ -1310,6 +1310,13 @@ public class ConfigWindow : Window, IDisposable
             ImGui.TextColored(new Vector4(1f, 0.5f, 0f, 1f), Resources.Incoming_Disabled);
             return;
         }
+        var showInChat = _configuration.ShowIncomingInChat;
+        if (ImGui.Checkbox(Text("Incoming_ShowInChat", "Show translations in chat") + "##ShowIncomingInChat", ref showInChat))
+        {
+            _configuration.ShowIncomingInChat = showInChat;
+            _configuration.Save();
+        }
+        HelpText(Text("Incoming_ShowInChatTip", "Prints each translation as a \"[KT] …\" line below the original message. Only you see it."));
         ImGui.Spacing();
         ImGui.Text(Resources.Incoming_LanguageDetection);
         var skipSameLanguage = _configuration.SkipSameLanguageTranslation;

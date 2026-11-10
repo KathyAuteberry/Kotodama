@@ -47,6 +47,10 @@ public class TranslatedChatMessage
         // Romanization fields
         public string? RomanizedText { get; set; }
         public string OriginalScript { get; set; } = "Latin";
+
+        /// <summary>The sender as the game sent it, for printing the translation below the original. Not saved.</summary>
+        [Newtonsoft.Json.JsonIgnore]
+        public SeString? SenderSeString { get; set; }
     }
 
     /// <summary>
@@ -208,11 +212,20 @@ public class TranslatedChatMessage
             }
         }
 
+        private readonly OwnPrintRegistry _ownPrints = new();
+
+        /// <summary>Marks a line Kotodama is about to print so it isn't treated as incoming chat.</summary>
+        public void RegisterOwnPrint(string text) => _ownPrints.Register(text);
+
         private void OnChatMessage(IHandleableChatMessage message)
         {
             var type = message.LogKind;
             // Get message text
             var messageText = message.Message.TextValue;
+
+            // Our own "[KT] …" translation lines.
+            if (_ownPrints.Take(messageText))
+                return;
 
             var pendingOutgoing = TakePendingOutgoing(messageText);
             string? originalFromPending = pendingOutgoing?.SourceText;
@@ -354,7 +367,8 @@ public class TranslatedChatMessage
                 Sender = senderName,
                 OriginalText = messageText,
                 TranslatedText = string.Empty,
-                IsTranslating = true
+                IsTranslating = true,
+                SenderSeString = message.Sender,
             };
 
             // Auto-translate phrases already show in the reader's language: keep them out of the

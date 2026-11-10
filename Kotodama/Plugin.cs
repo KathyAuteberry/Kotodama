@@ -47,6 +47,7 @@ namespace EchoXIV
         [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null!;
         [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
         [PluginService] internal static IPartyList PartyList { get; private set; } = null!;
+        [PluginService] internal static IKeyState KeyState { get; private set; } = null!;
         
         private Configuration _configuration = null!;
         private ITranslationService _translatorService = null!;
@@ -73,6 +74,9 @@ namespace EchoXIV
         private EngineSelectionBlock? _lastSelectionBlock;
         private OutgoingQueue? _outgoingQueue;
         private readonly ConfirmationGate _confirmationGate = new();
+        private GameFunctions.PreviewKeyHandler? _previewKeyHandler;
+        private volatile bool _imGuiWantsText;
+        private readonly HashSet<Guid> _echoedIncoming = new();
         private GameFunctions.ChatSender? _chatSender;
         private GlossaryService _glossaryService = null!;
         private TranslationCache _translationCache = null!;
@@ -201,6 +205,7 @@ namespace EchoXIV
                         ConfirmationTimeout = () => TimeSpan.FromSeconds(_configuration.OutgoingPreviewTimeoutSeconds),
                     });
                 _windowSystem.AddWindow(new PreviewWindow(_confirmationGate, () => _outgoingQueue?.PendingCount ?? 0));
+                _previewKeyHandler = new GameFunctions.PreviewKeyHandler(Framework, KeyState, _confirmationGate, () => _imGuiWantsText, PluginLog);
 
                 // Initialize native hook (outgoing translation)
                 try
@@ -298,6 +303,7 @@ namespace EchoXIV
         {
             FontManager?.BuildFonts();
             using var font = FontManager?.Push();
+            _imGuiWantsText = Dalamud.Bindings.ImGui.ImGui.GetIO().WantTextInput;
             _windowSystem.Draw();
         }
 
@@ -434,6 +440,7 @@ namespace EchoXIV
             // nothing reaches the game after unload starts.
             _chatBoxHook?.Dispose();
             _outgoingQueue?.Dispose();
+            _previewKeyHandler?.Dispose();
 
             // Stop incoming message handler
             _incomingMessageHandler?.Dispose();
@@ -590,6 +597,44 @@ namespace EchoXIV
         private void OnMessageTranslated(TranslatedChatMessage message)
         {
             _historyManager.UpdateMessage(message);
+            EchoIncomingToChat(message);
+        }
+
+        /// <summary>
+        /// Prints an incoming translation as a local-only "[KT] …" line below the original, in the
+        /// same channel and with the same sender so it lands in the same chat tab (stock chat and
+        /// ChatTwo). Printed once per message; the original line is never changed.
+        /// </summary>
+        private void EchoIncomingToChat(TranslatedChatMessage message)
+        {
+            if (!_configuration.ShowIncomingInChat || message.IsTranslating)
+                return;
+
+            var line = IncomingChatEcho.Format(message.OriginalText, message.TranslatedText, message.TranslationFailed, message.IsOutgoing);
+            if (line == null)
+                return;
+
+            lock (_echoedIncoming)
+            {
+                if (_echoedIncoming.Count > 1000)
+                    _echoedIncoming.Clear();
+                if (!_echoedIncoming.Add(message.Id))
+                    return;
+            }
+
+            _ = Framework.RunOnFrameworkThread(() =>
+            {
+                if (_shutdownCts.IsCancellationRequested)
+                    return;
+
+                _incomingMessageHandler?.RegisterOwnPrint(line);
+                ChatGui.Print(new XivChatEntry
+                {
+                    Type = message.ChatType,
+                    Name = message.SenderSeString ?? Dalamud.Game.Text.SeStringHandling.SeString.Empty,
+                    Message = line,
+                });
+            });
         }
 
         private void OnOutgoingMessage(TranslatedChatMessage message)

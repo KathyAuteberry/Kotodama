@@ -1,6 +1,6 @@
 # In-game test checklist
 
-Everything below needs the running game and can't be covered by the 447 automated tests. Work through it
+Everything below needs the running game and can't be covered by the 465 automated tests. Work through it
 top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected together with the
 `/xllog` lines around it. Turn on verbose logging in Settings → General if you can.
 
@@ -71,6 +71,9 @@ top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected
 - [!] A Japanese line in Party or PF chat is translated to English in the translated chat window (Raid profile terms).
   - It shows in the plugin’s settings window but not in chat – at least not in ChatTwo, not sure about stock chat (but likely also not, even after disabling ChatTwo later, stock chat has no such translations)
   - We can keep the original message intact and put a translation as a local-only message below it with a [KT] prefix, same as ChatTranslated does it
+  - **Fixed, retest:** Incoming → **Show translations in chat** (on by default) prints `[KT] <translation>` below the
+    original, in the same channel and with the same sender, so it lands in the same ChatTwo tab. Check that it
+    appears once, isn't translated again, and doesn't show for English lines, failures or auto-translate-only lines.
 - [x] ⚠ An incoming line made only of **auto-translate phrases** is shown as is, with no "(not translated)" marker.
 - [x] ⚠ A mixed line (phrase plus Japanese text) shows the phrases in 【】 followed by the English translation.
 - [x] English lines are left alone (with verbose logging on, no PLaMo request is logged for them).
@@ -106,6 +109,9 @@ top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected
 - [!] ⚠ The window takes keyboard focus. **Enter** sends, **Esc** cancels ("Not sent: you cancelled it"). Check
       that Enter doesn't also open the game's chat input, and Esc doesn't also open the game menu.
   - Not with ChatTwo plugin installed as chat replacement
+  - **Fixed, retest with ChatTwo:** Enter/Esc are now read from the game's key state and hidden from the game while a
+    preview is up, so they work whichever window has focus. While you're typing in a chat input, Enter/Esc stay with
+    the input and don't answer the preview. Check that Enter doesn't open ChatTwo's input and Esc doesn't open the menu.
 - [ ] Send two `/tl` lines and a normal line quickly. Only the first preview shows ("2 more waiting"); the normal
       line waits until you answer.
 - [ ] Leave a preview alone: after the preview timeout it closes and nothing is sent, even with Send my original

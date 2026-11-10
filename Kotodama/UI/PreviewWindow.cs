@@ -16,7 +16,7 @@ namespace EchoXIV.UI;
 public sealed class PreviewWindow : Window
 {
     // Ignore keys briefly after a preview appears, so a key held from typing doesn't answer it.
-    private static readonly TimeSpan KeyGrace = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan KeyGrace = PreviewKeyTracker.DefaultGrace;
 
     private readonly ConfirmationGate _gate;
     private readonly Func<int> _pendingCount;
@@ -59,7 +59,10 @@ public sealed class PreviewWindow : Window
         WindowName = $"{Text("Preview_Title", "Send this translation?")}###KotodamaPreview";
         if (_focusNextFrame)
         {
-            ImGui.SetNextWindowFocus();
+            // Never take focus from someone typing (game chat, ChatTwo). Enter/Esc also work
+            // without focus, through GameFunctions.PreviewKeyHandler.
+            if (!ImGui.GetIO().WantTextInput)
+                ImGui.SetNextWindowFocus();
             _focusNextFrame = false;
         }
 
