@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <!--
+    Core sources are compiled directly into the tests instead of referencing the plugin.
+    The plugin depends on Dalamud, which is not loadable here; this project has no Dalamud
+    references, so any Core file that touches Dalamud fails to compile (purity by construction).
+  -->
+  <ItemGroup>
+    <Compile Include="../../Kotodama/Core/**/*.cs" Link="Core/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" PrivateAssets="all" />
+    <PackageReference Include="GitHubActionsTestLogger" Version="3.0.5" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

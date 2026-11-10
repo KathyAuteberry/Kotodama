@@ -35,33 +35,43 @@ rebuild after a Dalamud update.
 
 ## Build (Debug)
 
-From the repository root:
+From the repository root, build the solution (the plugin and the tests):
 
 ```bash
-dotnet build Kotodama/Kotodama.csproj -c Debug
+dotnet build Kotodama.sln -c Debug
+```
+
+Run the tests:
+
+```bash
+dotnet test Kotodama.sln -c Debug
 ```
 
 Clean rebuild:
 
 ```bash
-rm -rf Kotodama/bin Kotodama/obj && dotnet build Kotodama/Kotodama.csproj -c Debug
+rm -rf Kotodama/bin Kotodama/obj tests/*/bin tests/*/obj && dotnet build Kotodama.sln -c Debug
 ```
 
-Output: `Kotodama/bin/Debug/Kotodama.dll`, the generated `Kotodama.json` manifest, `Newtonsoft.Json.dll`,
-`images/` and the satellite resource folders. Expected result: 0 warnings, 0 errors (about 2–6 s warm).
+The solution maps the plugin to the `x64` platform, the same as FluffySim. The plugin output therefore lands in
+**`Kotodama/bin/x64/Debug/`**: `Kotodama.dll`, the generated `Kotodama.json` manifest, `Newtonsoft.Json.dll`,
+`images/` and the satellite resource folders. Expected result: 0 warnings, 0 errors.
 
-Once the test project exists (see `docs/PLAN.md`), run it with:
+Building the project on its own (`dotnet build Kotodama/Kotodama.csproj -c Debug`) writes to
+`Kotodama/bin/Debug/` instead. Use the solution build so that Dalamud always loads the same path.
 
-```bash
-dotnet test -c Debug
-```
+### Tests
+
+`tests/Kotodama.Tests` (xUnit, `net10.0`) has **no Dalamud references**. It compiles the files under
+`Kotodama/Core/` directly instead of referencing the plugin. Code in `Core/` must therefore stay
+Dalamud-free; if it doesn't, the test project fails to compile.
 
 ## Loading the Debug build in game
 
 Dalamud runs under Proton, so it sees Linux paths through the `Z:` drive.
 
 1. In game: `/xlsettings` → *Experimental* → *Dev Plugin Locations*, add
-   `Z:\home\kath\Projekty\KathyAuteberry\Kotodama\Kotodama\bin\Debug\Kotodama.dll`
+   `Z:\home\kath\Projekty\KathyAuteberry\Kotodama\Kotodama\bin\x64\Debug\Kotodama.dll`
    (this follows the same pattern as the existing FluffySim/IINACT entries in `~/.xlcore/dalamudConfig.json`).
 2. `/xlplugins` → *Dev Tools* → enable **Kotodama**.
 3. Commands: `/kotodama` (settings), `/tl …` and `/translate …` (translate and send).
