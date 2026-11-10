@@ -36,6 +36,12 @@ namespace EchoXIV
         /// only /tl is translated. Replaces <see cref="TranslationEnabled"/> (config version 2).
         /// </summary>
         public EchoXIV.Outgoing.OutgoingMode OutgoingMode { get; set; } = EchoXIV.Outgoing.OutgoingMode.ExplicitOnly;
+
+        /// <summary>
+        /// Seconds to wait for one outgoing translation before applying the failure policy.
+        /// Later lines wait behind it (strict ordering), so this stays short.
+        /// </summary>
+        public int OutgoingTimeoutSeconds { get; set; } = 10;
         
         /// <summary>
         /// Language you write your own messages in.
@@ -269,6 +275,12 @@ namespace EchoXIV
             {
                 // The user had turned outgoing translation off with the old /tl off.
                 OutgoingMode = EchoXIV.Outgoing.OutgoingMode.Off;
+                changed = true;
+            }
+
+            if (OutgoingTimeoutSeconds < 2 || OutgoingTimeoutSeconds > 60)
+            {
+                OutgoingTimeoutSeconds = Math.Clamp(OutgoingTimeoutSeconds, 2, 60);
                 changed = true;
             }
 

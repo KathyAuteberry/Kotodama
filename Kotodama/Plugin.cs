@@ -58,6 +58,8 @@ namespace EchoXIV
         // EngineSelection (never a hardcoded cloud engine); null when the policy allows no fallback.
         private ITranslationService? _secondaryTranslator;
         private EngineSelectionBlock? _lastSelectionBlock;
+        private OutgoingQueue? _outgoingQueue;
+        private GameFunctions.ChatSender? _chatSender;
         private GlossaryService _glossaryService = null!;
         private TranslationCache _translationCache = null!;
         private IRomanizationService? RomanizationService
@@ -160,6 +162,17 @@ namespace EchoXIV
                 _incomingMessageHandler.OnOutgoingMessage += OnOutgoingMessage;
                 _incomingMessageHandler.OnRequestEngineFailover += HandleEngineFailure;
                 
+                // Outgoing queue: strict FIFO, clean sends with explicit channel prefixes.
+                _chatSender = new GameFunctions.ChatSender(Framework, ChatGui, PluginLog, _incomingMessageHandler, _shutdownCts.Token);
+                _outgoingQueue = new OutgoingQueue(
+                    new OutgoingTranslator(() => _translatorService, _glossaryService, _translationCache, _configuration, PluginLog, HandleEngineFailure),
+                    _chatSender,
+                    new OutgoingQueueOptions
+                    {
+                        Timeout = () => TimeSpan.FromSeconds(_configuration.OutgoingTimeoutSeconds),
+                        FailurePolicy = () => OutgoingFailurePolicy.DoNotSend,
+                    });
+
                 // Initialize native hook (outgoing translation)
                 try
                 {
@@ -388,6 +401,9 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
         {
             _shutdownCts.Cancel();
 
+            // Stop outgoing sends first: nothing may reach the game after unload starts.
+            _outgoingQueue?.Dispose();
+
             // Stop incoming message handler
             _incomingMessageHandler?.Dispose();
             FontManager?.Dispose();
@@ -582,7 +598,7 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
                 return;
             }
 
-            TranslateAndSend(resolved);
+            EnqueueOutgoing(resolved);
         }
 
         /// <summary>/kotodama: settings window and plugin commands.</summary>
@@ -684,210 +700,30 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
             }
         }
 
-        private void TranslateAndSend(ResolvedOutgoing input, bool allowFailoverRetry = true)
+        /// <summary>
+        /// Queues a resolved /tl line. Excluded phrases are sent unchanged, but still through the
+        /// queue so they keep their place in line. Framework thread.
+        /// </summary>
+        private void EnqueueOutgoing(ResolvedOutgoing resolved)
         {
-            // Traducir async
-            _ = Task.Run(async () =>
+            var excluded = _configuration.ExcludedMessages.Contains(resolved.Message);
+            var item = new OutgoingItem
             {
-                var sw = Stopwatch.StartNew();
-                try
-                {
-                    var (prefix, message, type, recipient) = input;
+                Kind = excluded ? OutgoingItemKind.PassThrough : OutgoingItemKind.Translate,
+                Text = resolved.Message,
+                Prefix = resolved.Prefix,
+                SaveToHistory = false,
+            };
 
-                    if (string.IsNullOrWhiteSpace(message))
-                    {
-                        _ = Framework.RunOnFrameworkThread(() => ChatGui.Print(GetResourceText("Command_NoMessage", "No message to translate")));
-                         return;
-                    }
-
-                    // Exclusion list check before translating
-                    if (_configuration.ExcludedMessages.Contains(message))
-                    {
-                        _ = Framework.RunOnFrameworkThread(() =>
-                        {
-                            if (_shutdownCts.IsCancellationRequested)
-                                return;
-
-                            SendToChannel(message, prefix);
-                            _historyManager.AddMessage(new TranslatedChatMessage
-                            {
-                                Timestamp = DateTime.Now,
-                                ChatType = type == XivChatType.Debug ? XivChatType.Debug : type,
-                                Recipient = recipient,
-                                Sender = PlayerState.CharacterName.ToString(),
-                                OriginalText = message,
-                                TranslatedText = message,
-                                IsTranslating = false
-                            });
-                        });
-                        return;
-                    }
-
-                    using var timeout = TranslationDefaults.CreateTimeoutTokenSource(_shutdownCts.Token);
-                    string translated;
-                    string? romanizedText = null;
-                    var combinedRomanization = false;
-
-                    var combinedRomanizationService = RomanizationService as ICombinedTranslator;
-                    var canUseCombinedRomanization = _configuration.RomanizationLanguages.Contains(_configuration.TargetLanguage) &&
-                        combinedRomanizationService != null &&
-                        (_translatorService is not TranslationRouter router || router.SupportsCombinedRomanization);
-
-                    if (canUseCombinedRomanization && combinedRomanizationService != null)
-                    {
-                        var combined = await combinedRomanizationService.TranslateWithRomanizationAsync(
-                            message,
-                            "auto",
-                            _configuration.TargetLanguage,
-                            timeout.Token,
-                            romanizeTranslation: true);
-                        translated = combined.Translation;
-                        romanizedText = combined.RomanizedText;
-                        combinedRomanization = true;
-                    }
-                    else
-                    {
-                        translated = await _translatorService.TranslateAsync(
-                            message,
-                            "auto",
-                            _configuration.TargetLanguage,
-                            timeout.Token
-                        );
-                    }
-
-                    var nativeTranslated = translated;
-                    var textToSend = translated;
-                    var translatedScript = NonLatinScriptDetector.Detect(nativeTranslated);
-                    var romanizationService = RomanizationService;
-                    if (!combinedRomanization &&
-                        _configuration.RomanizationLanguages.Contains(_configuration.TargetLanguage) &&
-                        translatedScript != NonLatinScriptKind.Latin &&
-                        romanizationService != null)
-                    {
-                        using var romanizationTimeout = TranslationDefaults.CreateTimeoutTokenSource(_shutdownCts.Token);
-                        romanizedText = await romanizationService.RomanizeAsync(
-                            nativeTranslated,
-                            _configuration.TargetLanguage,
-                            romanizationTimeout.Token);
-                        if (!string.IsNullOrWhiteSpace(romanizedText))
-                            textToSend = romanizedText;
-                    }
-
-                        // Send on main thread
-                    _ = Framework.RunOnFrameworkThread(() =>
-                    {
-                        if (_shutdownCts.IsCancellationRequested)
-                            return;
-
-                        // Register pending so IncomingMessageHandler matches it via dedicated outgoing path
-                        _incomingMessageHandler?.RegisterPendingOutgoing(
-                            textToSend,
-                            message,
-                            nativeTranslated,
-                            romanizedText);
-                        
-                        SendToChannel(textToSend, prefix);
-                        string usedInstanceName = "unknown";
-                        if (_translatorService is TranslationRouter r2 && !string.IsNullOrWhiteSpace(r2.LastUsedInstanceName) && r2.LastUsedInstanceName != "?")
-                            usedInstanceName = r2.LastUsedInstanceName;
-                        else
-                            usedInstanceName = _configuration.PrimaryInstanceName;
-                        if (usedInstanceName == "?" || string.IsNullOrWhiteSpace(usedInstanceName))
-                            usedInstanceName = _configuration.SelectedEngine.ToString();
-                        ChatBoxHook.LogOutgoingTranslation(
-                            PluginLog,
-                            usedInstanceName,
-                            _configuration.TargetLanguage,
-                            sw.ElapsedMilliseconds,
-                            message,
-                            nativeTranslated,
-                            romanizedText);
-                    });
-                }
-                catch (OperationCanceledException ex)
-                {
-                    if (_shutdownCts.IsCancellationRequested)
-                        return;
-
-                    PluginLog.Warning(ex, "Manual translation timed out. Sending original message instead.");
-                    _ = Framework.RunOnFrameworkThread(() =>
-                    {
-                        var (prefix, message, type, recipient) = input;
-                        if (string.IsNullOrWhiteSpace(message))
-                        {
-                            return;
-                        }
-
-                        SendToChannel(message, prefix);
-                        _historyManager.AddMessage(new TranslatedChatMessage
-                        {
-                            Timestamp = DateTime.Now,
-                            ChatType = type == XivChatType.Debug ? XivChatType.Debug : type,
-                            Recipient = recipient,
-                            Sender = PlayerState.CharacterName.ToString(),
-                            OriginalText = message,
-                            TranslatedText = message,
-                            IsTranslating = false
-                        });
-                    });
-                }
-                catch (TranslationRateLimitException ex)
-                {
-                    if (!allowFailoverRetry)
-                    {
-                        PluginLog.Error(ex, "Translation failed after automatic failover. Sending the original message once.");
-                        _ = Framework.RunOnFrameworkThread(() => SendOriginalAfterTranslationFailure(input));
-                        return;
-                    }
-
-                    PluginLog.Warning($"{ex.Message}. Checking whether the fallback policy allows switching engines...");
-                    _ = Framework.RunOnFrameworkThread(() =>
-                    {
-                        if (_shutdownCts.IsCancellationRequested)
-                            return;
-                        // Retry only when the policy actually switched engines; otherwise the retry
-                        // would hit the same failed engine.
-                        if (TrySwitchEngineAfterFailure())
-                            TranslateAndSend(input, allowFailoverRetry: false);
-                        else
-                            SendOriginalAfterTranslationFailure(input);
-                    });
-                }
-                catch (Exception ex)
-                {
-                    PluginLog.Error(ex, "Error while translating message.");
-                    _ = Framework.RunOnFrameworkThread(() =>
-                    {
-                        ChatGui.PrintError(GetResourceText("Command_TranslateError", "Translation error"));
-                    });
-                }
-            }, _shutdownCts.Token);
-        }
-
-        private void SendOriginalAfterTranslationFailure(ResolvedOutgoing input)
-        {
-            var (prefix, message, type, recipient) = input;
-            if (string.IsNullOrWhiteSpace(message))
-                return;
-
-            SendToChannel(message, prefix);
-            _historyManager.AddMessage(new TranslatedChatMessage
-            {
-                Timestamp = DateTime.Now,
-                ChatType = type == XivChatType.Debug ? XivChatType.Debug : type,
-                Recipient = recipient,
-                Sender = PlayerState.CharacterName.ToString(),
-                OriginalText = message,
-                TranslatedText = message,
-                IsTranslating = false
-            });
+            if (_outgoingQueue == null || !_outgoingQueue.TryEnqueue(item))
+                ChatGui.PrintError($"[Kotodama] Not sent: too many messages are waiting to be translated. Your message: {resolved.Message}");
         }
 
         /// <summary>
         /// An outgoing line whose channel was resolved when it was entered. <see cref="Prefix"/> is
         /// always an explicit channel command, so sending never depends on the active channel later.
         /// </summary>
-        private sealed record ResolvedOutgoing(string Prefix, string Message, XivChatType Type, string Recipient);
+        private sealed record ResolvedOutgoing(string Prefix, string Message);
 
         /// <summary>
         /// Parses /tl arguments and resolves the channel. Must run on the framework thread (it reads
@@ -925,7 +761,7 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
                 }
             }
 
-            resolved = new ResolvedOutgoing(target.Prefix, parsed.Body, ToXivChatType(target), target.TellRecipient ?? string.Empty);
+            resolved = new ResolvedOutgoing(target.Prefix, parsed.Body);
             error = string.Empty;
             return true;
         }
@@ -961,60 +797,6 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
             return ChannelTarget.Tell(name, world);
         }
 
-        private static XivChatType ToXivChatType(ChannelTarget target) => target.Kind switch
-        {
-            ChatChannelKind.Say => XivChatType.Say,
-            ChatChannelKind.Party => XivChatType.Party,
-            ChatChannelKind.Alliance => XivChatType.Alliance,
-            ChatChannelKind.Yell => XivChatType.Yell,
-            ChatChannelKind.Shout => XivChatType.Shout,
-            ChatChannelKind.FreeCompany => XivChatType.FreeCompany,
-            ChatChannelKind.PvpTeam => XivChatType.PvPTeam,
-            ChatChannelKind.NoviceNetwork => XivChatType.NoviceNetwork,
-            ChatChannelKind.Linkshell => target.Index switch
-            {
-                1 => XivChatType.Ls1, 2 => XivChatType.Ls2, 3 => XivChatType.Ls3, 4 => XivChatType.Ls4,
-                5 => XivChatType.Ls5, 6 => XivChatType.Ls6, 7 => XivChatType.Ls7, _ => XivChatType.Ls8,
-            },
-            ChatChannelKind.CrossWorldLinkshell => target.Index switch
-            {
-                1 => XivChatType.CrossLinkShell1, 2 => XivChatType.CrossLinkShell2, 3 => XivChatType.CrossLinkShell3,
-                4 => XivChatType.CrossLinkShell4, 5 => XivChatType.CrossLinkShell5, 6 => XivChatType.CrossLinkShell6,
-                7 => XivChatType.CrossLinkShell7, _ => XivChatType.CrossLinkShell8,
-            },
-            ChatChannelKind.Tell => XivChatType.TellOutgoing,
-            ChatChannelKind.Echo => XivChatType.Echo,
-            _ => XivChatType.Debug,
-        };
-
-        private unsafe void SendToChannel(string message, string? channel)
-        {
-            try
-            {
-                var sanitized = message.Replace("\0", "").Replace("\r", "").Replace("\n", " ");
-                var fullMessage = string.IsNullOrEmpty(channel) ? sanitized : $"{channel} {sanitized}";
-                var maxBytes = TranslationDefaults.MaxChatBytes;
-                
-                if (System.Text.Encoding.UTF8.GetByteCount(fullMessage) > maxBytes)
-                {
-                    while (System.Text.Encoding.UTF8.GetByteCount(fullMessage) > maxBytes - 3)
-                    {
-                        fullMessage = fullMessage.Substring(0, fullMessage.Length - 1);
-                    }
-                    fullMessage += "...";
-                }
-                
-                var mes = FFXIVClientStructs.FFXIV.Client.System.String.Utf8String.FromString(fullMessage);
-                FFXIVClientStructs.FFXIV.Client.UI.UIModule.Instance()->ProcessChatBoxEntry(mes);
-                mes->Dtor(true);
-            }
-            catch (Exception ex)
-            {
-                PluginLog.Error(ex, "Error while sending message.");
-                ChatGui.PrintError(GetResourceText("Command_SendError", "Error sending message"));
-            }
-        }
-        
         private Configuration LoadConfiguration()
         {
             var loaded = PluginInterface.GetPluginConfig() as Configuration;

@@ -95,6 +95,13 @@ namespace EchoXIV.GameFunctions
         {
             try
             {
+                // Lines Kotodama itself sends re-enter this hook synchronously.
+                if (ChatSender.IsSending)
+                {
+                    _processChatBoxHook!.Original(uiModule, message, a4, saveToHistory);
+                    return;
+                }
+
                 var originalText = message->ToString();
 
                 // Our own pending translations always go straight through.
