@@ -1,0 +1,94 @@
+name: Release Kotodama
+# Mirrors FluffySim's publish workflow: a vX.Y.Z.0 tag on published master history is tested,
+# built in Release on this isolated runner only, published as a GitHub release, and then recorded
+# in KathyAuteberry/plogons (mostly-harmless.json) from the downloaded public ZIP.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: kotodama-publication
+  cancel-in-progress: false
+jobs:
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-2022
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Verify tag and source
+        shell: pwsh
+        run: |
+          [xml]$props = Get-Content Kotodama.Version.props
+          $expected = "v$($props.Project.PropertyGroup.KotodamaVersion).0"
+          if ($env:GITHUB_REF_NAME -ne $expected) { throw "Tag must be $expected" }
+          git fetch origin master:refs/remotes/origin/master
+          git merge-base --is-ancestor HEAD origin/master
+          if ($LASTEXITCODE -ne 0) { throw 'Tag must belong to published master history' }
+      - name: Download Dalamud
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile latest.zip
+          Expand-Archive latest.zip "$env:AppData\XIVLauncher\addon\Hooks\dev"
+      - run: python -m unittest discover -s tools/tests
+      - run: dotnet build Kotodama.sln -c Debug
+      - run: dotnet test Kotodama.sln -c Debug --no-build
+      - name: Build Release on isolated runner only
+        run: dotnet build Kotodama/Kotodama.csproj -c Release -p:Platform=x64
+      - run: python tools/package_release.py --input Kotodama/bin/x64/Release --output dist
+      - name: Publish once; retries reuse immutable asset
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          asset="Kotodama-${GITHUB_REF_NAME#v}.zip"
+          python tools/release_notes.py --version "${GITHUB_REF_NAME#v}" --output dist/release-notes.md
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            mkdir existing
+            gh release download "$GITHUB_REF_NAME" --pattern "$asset" --dir existing
+          else
+            gh release create "$GITHUB_REF_NAME" "dist/$asset" --verify-tag --notes-file dist/release-notes.md --title "Kotodama ${GITHUB_REF_NAME#v}"
+            mkdir existing
+            gh release download "$GITHUB_REF_NAME" --pattern "$asset" --dir existing
+          fi
+      - name: Verify release is public and stable
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY" --jq .private | grep -qx false
+          gh release view "$GITHUB_REF_NAME" --json isDraft,isPrerelease --jq '(.isDraft == false) and (.isPrerelease == false)' | grep -qx true
+      - name: Checkout metadata repository
+        uses: actions/checkout@v5
+        with:
+          repository: KathyAuteberry/plogons
+          ref: master
+          token: ${{ secrets.PLOGONS_TOKEN }}
+          path: manifest-repo
+      - run: python -m unittest discover -s manifest-repo/tools/tests
+      - name: Update metadata from published asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            git -C manifest-repo pull --ff-only
+            python manifest-repo/tools/update_manifest.py --plugin Kotodama --zip "existing/Kotodama-${GITHUB_REF_NAME#v}.zip" --version "${GITHUB_REF_NAME#v}"
+            if git -C manifest-repo diff --quiet; then exit 0; fi
+            git -C manifest-repo config user.name github-actions[bot]
+            git -C manifest-repo config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git -C manifest-repo add mostly-harmless.json
+            git -C manifest-repo commit -m "chore(release): publish Kotodama ${GITHUB_REF_NAME#v} metadata"
+            if git -C manifest-repo push origin HEAD:master; then exit 0; fi
+            git -C manifest-repo fetch origin master
+            git -C manifest-repo reset --hard origin/master
+          done
+          exit 1
