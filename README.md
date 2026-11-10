@@ -1,59 +1,68 @@
-# <img src="https://raw.githubusercontent.com/ssalazar217/EchoXIV/master/EchoXIV/images/icon.png" width="48" height="48" align="center" /> EchoXIV 🌸 [![Discord](https://img.shields.io/discord/1464143706616627316?label=Discord&logo=discord&logoColor=white&color=7289da)](https://discord.gg/B3qnvuhN9G)
+# Kotodama (言霊)
 
-**EchoXIV** is an advanced plugin for Dalamud (XIVLauncher) built to reduce language barriers in FFXIV. Unlike passive translators, EchoXIV focuses on **active communication**, helping you understand others and be understood naturally in different languages.
+Japanese ⇄ English chat translation for Final Fantasy XIV, built for Japanese Party Finder raiding and
+everyday social chat. It translates with **PLaMo 3 Translate** running on your own Ollama server.
 
-## 🌟 Key Features
+Kotodama is a fork of [EchoXIV](https://github.com/ssalazar217/EchoXIV) by ssalazar217 and keeps its chat
+hooking, channel detection, translated-chat window and history. See [CHANGELOG.md](CHANGELOG.md) for what
+changed.
 
-- **Your Message in Any Language (Outgoing Translation)**: Use `/tl <message>` to send an instant translation to the active chat channel.
-- **Bidirectional Translation**: Understand what others say and make sure they understand you.
-- **Dynamic Channel Detection**: Automatically detects whether you are chatting in Party, FC, Say, or a private Tell.
-- **Integrated Dalamud Window**: Displays translated chat inside the native Dalamud UI using ImGui.
-- **Localized UI**: Follows the language configured in Dalamud, including expanded support for the UI languages supported by Dalamud.
-- **Smooth First-Run Experience**: Initial setup is based on your Dalamud language, with a guided welcome screen.
-- **Multiple Engines**: Supports **Google Translate** (no API key), **Papago**, **LibreTranslate**, **Yandex**, and **Local AI** (LM Studio / Ollama), with configurable fallback and automatic primary-engine recovery.
-- **Romanized Output**: When enabled, Japanese, Korean, Chinese, and other supported translations can be displayed in romanized form in the translated-chat window while preserving the original translated text.
+## Features
 
-## 🚀 Installation
+- **Local-only by default.** Chat never goes to a cloud translation service unless you explicitly allow it.
+- **Explicit outgoing translation.** Your normal chat is sent as written. `/tl <message>` translates one
+  line and sends it to the channel you were in when you typed it.
+- **Safe failures.** Messages are sent in order. If a translation fails, nothing is sent and your original
+  text is shown to you.
+- **PLaMo 3 Translate** with its native prompt format, an explicit translation direction, and model warm-up.
+- **Editable profiles** (Raid, Casual) with free-text context and a terminology glossary, as plain files you
+  can edit outside the game.
+- **Keeps what shouldn't change:** player names, role markers, macro tags such as `<se.1>`, emoticons and
+  auto-translate phrases.
 
-EchoXIV is currently intended for distribution through the Dalamud ecosystem and repository workflow.
+## Setup
 
-### Testing Channel Installation
+1. Run Ollama somewhere on your network and pull the model:
 
-Once it is available in the testing channel:
+   ```bash
+   ollama pull hf.co/pfnet/plamo-3-translate-8b-GGUF:Q4_K_M
+   ```
 
-1. Open the **Dalamud** plugin installer with `/xlplugins`.
-2. Go to **Settings**.
-3. Make sure **Get plugin testing updates** is enabled.
-4. Search for **EchoXIV** in the plugin list and install it.
+2. In game, open `/kotodama` → **Engines**, select **PLaMo**, enter your server URL (for example
+   `http://my-server.lan:11434`) and press **Test connection**.
+3. In **General**, set the language you write in (English) and the target language (Japanese).
 
-## 📖 Commands
+## Commands
 
-| Command               | Description                                             |
-| --------------------- | ------------------------------------------------------- |
-| `/translate` / `/tl`  | Opens the configuration window (no arguments).          |
-| `/tl <message>`       | Translates and sends the message to the active channel. |
-| `/tl on` / `/tl off`  | Enable or disable automatic translation.                |
-| `/tl config`          | Opens the settings.                                     |
-| `/tl chat`            | Shows or hides the translated chat window.              |
-| `/tl reset`           | Resets the translated chat window position.             |
-| `/tl help`            | Shows the available commands.                           |
-| `/echoxiv`            | Opens the configuration window.                         |
+| Command | Description |
+|---|---|
+| `/tl <message>` | Translate and send to the channel you were in when you typed it. |
+| `/tl /p <message>` | Translate and send to a specific channel (`/p`, `/fc`, `/a`, `/s`, `/sh`, `/y`, `/l1`–`/l8`, `/cwl1`–`/cwl8`, `/t First Last@World`, `/r`, `/e`). |
+| `/kotodama` | Open settings. |
+| `/kotodama mode off\|explicit\|auto` | Outgoing translation mode. |
+| `/kotodama profile [name]` | Show or switch the translation profile. |
+| `/kotodama reload` | Reload profile files after editing them. |
+| `/kotodama chat` / `reset` / `help` | Translated chat window, reset its position, list commands. |
 
-## 🔧 Configuration
+## Profiles
 
-Open the menu with `/echoxiv`:
+Profiles live in the plugin config folder under `profiles/<name>/` (the settings window shows the path):
 
-- **Welcome**: Initial screen to configure your languages in seconds.
-- **General**: Set your writing and target languages.
-- **Visuals**: Adjust font size, time format, per-channel colors, romanization, and translated chat window position.
-- **Filters**: Exclude messages or channels you do not want translated, including common game shorthand and recurring terms.
+- `context.txt`, plus optional `context.ja-en.txt` / `context.en-ja.txt`: free-text background for the model.
+- `glossary.tsv`: `ja<TAB>en<TAB>note<TAB>direction`. Extra English spellings go after `|`, and the note is
+  never sent to the model.
 
-## 🙏 Credits
+Kotodama never overwrites your edits. The current defaults are kept in `profiles/.defaults/` so you can
+compare them with yours.
 
-- **TataruHelper**: Technical inspiration for the translation approach.
-- **Echoglossian**: Useful references for Dalamud integration.
-- **Dalamud/XIVLauncher**: For the development ecosystem that makes plugins like this possible.
+## Development
 
----
+See [docs/DEV-LINUX.md](docs/DEV-LINUX.md) (build, tests, live benchmark) and [RELEASING.md](RELEASING.md).
 
-**Note**: This plugin is a third-party tool. Use it responsibly and respect Square Enix's terms of service.
+## Credits
+
+- [EchoXIV](https://github.com/ssalazar217/EchoXIV) by ssalazar217, the base of this plugin.
+- [PLaMo 3 Translate](https://huggingface.co/pfnet) by Preferred Networks.
+- The Dalamud and XIVLauncher projects.
+
+This is a third-party tool. Use it responsibly and respect Square Enix's terms of service.
