@@ -13,6 +13,7 @@ namespace EchoXIV
         public static bool IsLocal(TranslationEngine engine) => engine switch
         {
             TranslationEngine.LocalAI => true,
+            TranslationEngine.Plamo => true,
 
             TranslationEngine.Google => false,
             TranslationEngine.Papago => false,

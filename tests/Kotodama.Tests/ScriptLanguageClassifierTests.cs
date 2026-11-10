@@ -101,7 +101,7 @@ public class ScriptLanguageClassifierTests
         const string original = "ｵｹ ＯＫ";
         var copy = new string(original.AsSpan());
         ScriptLanguageClassifier.Classify(original);
-        Assert.Equal(copy, original);
+        Assert.Equal(original, copy);
     }
 
     [Fact]

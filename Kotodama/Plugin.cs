@@ -54,6 +54,8 @@ namespace EchoXIV
         private LibreTranslateTranslatorService _libreTranslateTranslator = null!;
         private YandexTranslatorService _yandexTranslator = null!;
         private List<ITranslationService> _instanceServices = new();
+        // Shared by every PLaMo instance; owns its HttpClient and is disposed on unload.
+        private readonly Plamo.PlamoClient _plamoClient = new();
         // Fallback translator for the incoming/outgoing failover paths. Comes only from
         // EngineSelection (never a hardcoded cloud engine); null when the policy allows no fallback.
         private ITranslationService? _secondaryTranslator;
@@ -416,6 +418,7 @@ namespace EchoXIV
                 if (svc is IDisposable d) d.Dispose();
             }
             _instanceServices.Clear();
+            _plamoClient.Dispose();
 
             // Remove windows
             _windowSystem?.RemoveAllWindows();
@@ -853,6 +856,7 @@ namespace EchoXIV
                 cacheVariants[instance.Id] = CacheKey.Variant(
                     instance.Type,
                     instance.Type == TranslationEngine.LocalAI ? _configuration.LocalAiModel : instance.Model);
+                // (PLaMo: instance.Model; profile data joins the variant in P4.)
 
                 ITranslationService svc;
                 switch (instance.Type)
@@ -879,6 +883,13 @@ namespace EchoXIV
                         svc = new ClaudeTranslatorService(_configuration, instance);
                         _instanceServices.Add(svc);
                         break;
+                    case TranslationEngine.Plamo:
+                    {
+                        var plamoInstance = instance;
+                        svc = new PlamoTranslatorService(_plamoClient, () => PlamoSettingsFor(plamoInstance));
+                        _instanceServices.Add(svc);
+                        break;
+                    }
                     default: continue;
                 }
                 var displayName = string.IsNullOrWhiteSpace(instance.Name) ? instance.Type.ToString() : instance.Name;
@@ -929,8 +940,17 @@ namespace EchoXIV
         {
             // Local AI reads the global endpoint setting; there is deliberately no default URL.
             TranslationEngine.LocalAI => !string.IsNullOrWhiteSpace(configuration.LocalAiEndpoint),
+            TranslationEngine.Plamo => !string.IsNullOrWhiteSpace(instance.Endpoint) && !string.IsNullOrWhiteSpace(instance.Model),
             _ => true,
         };
+
+        internal static Plamo.PlamoSettings PlamoSettingsFor(EngineInstance instance) => new(
+            instance.Endpoint,
+            string.IsNullOrWhiteSpace(instance.Model) ? Plamo.PlamoSettings.DefaultModel : instance.Model.Trim(),
+            instance.KeepAlive ?? string.Empty,
+            Math.Clamp(instance.Temperature, 0f, 1f),
+            instance.MaxTokens > 0 ? instance.MaxTokens : Plamo.PlamoSettings.DefaultNumPredict,
+            TimeSpan.FromSeconds(Math.Clamp(instance.TimeoutSeconds, 1, 60)));
 
         internal static string GetSelectionBlockMessage(EngineSelectionBlock block) => block switch
         {

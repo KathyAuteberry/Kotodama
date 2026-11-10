@@ -431,7 +431,8 @@ namespace EchoXIV
 
             foreach (var engine in Engines)
             {
-                if (engine.MaxTokens > 0 && engine.MaxTokens < 500)
+                // PLaMo's num_predict is small on purpose (chat lines are short; stops end it early).
+                if (engine.Type != TranslationEngine.Plamo && engine.MaxTokens > 0 && engine.MaxTokens < 500)
                 {
                     engine.MaxTokens = 500;
                     changed = true;

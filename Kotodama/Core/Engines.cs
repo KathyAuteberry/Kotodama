@@ -17,7 +17,10 @@ namespace EchoXIV
         Gemini,
         Claude,
         DeepSeek,
-        OpenRouter
+        OpenRouter,
+
+        /// <summary>PLaMo 3 Translate on a self-hosted Ollama server (docs/PLAN.md P3).</summary>
+        Plamo,
     }
 
     /// <summary>
@@ -38,5 +41,12 @@ namespace EchoXIV
         public string Endpoint { get; set; } = "";
         public float Temperature { get; set; } = 0.2f;
         public int MaxTokens { get; set; } = 500;
+
+        // PLaMo (Ollama) only.
+        /// <summary>How long Ollama keeps the model loaded after a request, e.g. "30m". Empty uses the server default.</summary>
+        public string KeepAlive { get; set; } = "30m";
+
+        /// <summary>Per-request timeout in seconds.</summary>
+        public int TimeoutSeconds { get; set; } = 8;
     }
 }

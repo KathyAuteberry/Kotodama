@@ -18,6 +18,8 @@
     <Compile Include="../../Kotodama/Core/**/*.cs" Link="Core/%(RecursiveDir)%(Filename)%(Extension)" />
     <!-- Dalamud-free plugin services that are worth testing directly (Newtonsoft only). -->
     <Compile Include="../../Kotodama/Services/TranslationCache.cs" Link="Services/TranslationCache.cs" />
+    <Compile Include="../../Kotodama/Services/ITranslationService.cs" Link="Services/ITranslationService.cs" />
+    <Compile Include="../../Kotodama/Services/PlamoTranslatorService.cs" Link="Services/PlamoTranslatorService.cs" />
   </ItemGroup>
 
   <ItemGroup>

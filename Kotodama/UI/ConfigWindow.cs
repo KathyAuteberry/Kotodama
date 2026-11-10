@@ -433,14 +433,16 @@ public class ConfigWindow : Window, IDisposable
         if (ImGui.Button(Resources.Engines_AddButton + "##AddEngine") && _newEngineTypeIdx > 0)
         {
             var name = string.IsNullOrWhiteSpace(_newEngineName) ? GetEngineDisplayName(_newEngineType) : _newEngineName.Trim();
-            _configuration.Engines.Add(new EngineInstance
-            {
-                Type = _newEngineType,
-                Name = name,
-                Enabled = false,
-                Model = GetDefaultModel(_newEngineType),
-                Temperature = 0.2f
-            });
+            _configuration.Engines.Add(_newEngineType == TranslationEngine.Plamo
+                ? DefaultEngines.NewPlamoInstance(name, enabled: false)
+                : new EngineInstance
+                {
+                    Type = _newEngineType,
+                    Name = name,
+                    Enabled = false,
+                    Model = GetDefaultModel(_newEngineType),
+                    Temperature = 0.2f
+                });
             _newEngineName = string.Empty;
             _engineConfigTargetId = _configuration.Engines[^1].Id;
             _configuration.Save();
@@ -774,6 +776,9 @@ public class ConfigWindow : Window, IDisposable
             case TranslationEngine.LocalAI:
                 DrawLocalAiSettings();
                 break;
+            case TranslationEngine.Plamo:
+                DrawPlamoSettings(instance);
+                break;
             case TranslationEngine.ChatGPT:
                 DrawCloudLlmSettings(instance, Resources.Engines_ChatGptEndpointTip);
                 break;
@@ -789,6 +794,84 @@ public class ConfigWindow : Window, IDisposable
             case TranslationEngine.OpenRouter:
                 DrawCloudLlmSettings(instance, Resources.Engines_OpenRouterEndpointTip);
                 break;
+        }
+    }
+
+    private void DrawPlamoSettings(EngineInstance instance)
+    {
+        ImGui.TextWrapped(Text("Plamo_Description", "PLaMo 3 Translate on your own Ollama server. Japanese ⇄ English only."));
+        ImGui.Spacing();
+
+        var changed = false;
+        var wasConfigured = Plugin.IsEngineConfigured(_configuration, instance);
+
+        var endpoint = instance.Endpoint ?? string.Empty;
+        ImGui.Text(Text("Plamo_Endpoint", "Server URL"));
+        ImGui.SetNextItemWidth(-1);
+        if (ImGui.InputTextWithHint($"##PlamoEndpoint{instance.Id}", "http://your-ollama-host:11434", ref endpoint, 200))
+        {
+            instance.Endpoint = endpoint.Trim();
+            changed = true;
+        }
+
+        var model = instance.Model ?? string.Empty;
+        ImGui.Text(Text("Plamo_Model", "Model"));
+        ImGui.SetNextItemWidth(-1);
+        var modelChanged = false;
+        if (ImGui.InputText($"##PlamoModel{instance.Id}", ref model, 200))
+        {
+            instance.Model = model.Trim();
+            changed = true;
+            modelChanged = true;
+        }
+
+        var timeout = instance.TimeoutSeconds;
+        ImGui.Text(Text("Plamo_Timeout", "Timeout (seconds)"));
+        ImGui.SetNextItemWidth(200);
+        if (ImGui.SliderInt($"##PlamoTimeout{instance.Id}", ref timeout, 1, 60))
+        {
+            instance.TimeoutSeconds = timeout;
+            changed = true;
+        }
+
+        var temperature = instance.Temperature;
+        ImGui.Text(Text("Plamo_Temperature", "Temperature"));
+        ImGui.SetNextItemWidth(200);
+        if (ImGui.SliderFloat($"##PlamoTemperature{instance.Id}", ref temperature, 0f, 1f, "%.2f"))
+        {
+            instance.Temperature = temperature;
+            changed = true;
+        }
+
+        var keepAlive = instance.KeepAlive ?? string.Empty;
+        ImGui.Text(Text("Plamo_KeepAlive", "Keep model loaded for"));
+        ImGui.SetNextItemWidth(200);
+        if (ImGui.InputText($"##PlamoKeepAlive{instance.Id}", ref keepAlive, 20))
+        {
+            instance.KeepAlive = keepAlive.Trim();
+            changed = true;
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(Text("Plamo_KeepAliveTip", "Ollama keep_alive, e.g. 30m or 2h. Loading the model takes about 3 seconds; keeping it loaded makes translations fast."));
+
+        var numPredict = instance.MaxTokens;
+        ImGui.Text(Text("Plamo_NumPredict", "Maximum output tokens"));
+        ImGui.SetNextItemWidth(200);
+        if (ImGui.InputInt($"##PlamoNumPredict{instance.Id}", ref numPredict))
+        {
+            instance.MaxTokens = Math.Clamp(numPredict, 16, 1024);
+            changed = true;
+        }
+
+        if (changed)
+        {
+            // Engines are rebuilt only when the instance becomes usable or unusable; other settings
+            // are read per request.
+            // The model is part of the cache key, so a model change rebuilds too.
+            if (modelChanged || wasConfigured != Plugin.IsEngineConfigured(_configuration, instance))
+                SaveEnginesChanged();
+            else
+                _configuration.Save();
         }
     }
 
@@ -932,6 +1015,7 @@ public class ConfigWindow : Window, IDisposable
 
     private static readonly TranslationEngine[] EngineTypes =
     {
+        TranslationEngine.Plamo,
         TranslationEngine.Google,
         TranslationEngine.Papago,
         TranslationEngine.Yandex,
@@ -954,6 +1038,7 @@ public class ConfigWindow : Window, IDisposable
         TranslationEngine.LibreTranslate => Resources.General_EngineNameLibreTranslate,
         TranslationEngine.Yandex => Resources.General_EngineNameYandex,
         TranslationEngine.LocalAI => "Local AI",
+        TranslationEngine.Plamo => "PLaMo (Ollama)",
         TranslationEngine.ChatGPT => "ChatGPT (OpenAI)",
         TranslationEngine.Gemini => "Gemini",
         TranslationEngine.Claude => "Claude",
