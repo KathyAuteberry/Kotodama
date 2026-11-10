@@ -1324,6 +1324,41 @@ public class ConfigWindow : Window, IDisposable
             _configuration.Save();
         }
         HelpText(Text("Incoming_PartyFinderTip", "Right-click a Party Finder listing's details and choose \"Translate (Kotodama)\". Japanese → English only; the result is printed in chat."));
+        var throttle = _configuration.SenderThrottleEnabled;
+        if (ImGui.Checkbox(Text("Incoming_Throttle", "Pause senders who post bursts (raid macros)") + "##SenderThrottle", ref throttle))
+        {
+            _configuration.SenderThrottleEnabled = throttle;
+            _configuration.Save();
+        }
+        HelpText(Text("Incoming_ThrottleTip", "When one sender posts many lines at once, the rest of the burst isn't translated. Translation resumes once they have been quiet for the pause time."));
+        if (throttle)
+        {
+            ImGui.Indent();
+            {
+                var throttleMessages = _configuration.SenderThrottleMessages;
+                ImGui.SetNextItemWidth(200);
+                if (ImGui.SliderInt(Text("Incoming_ThrottleMessages", "Lines") + "##SenderThrottleMessages", ref throttleMessages, 2, 20))
+                {
+                    _configuration.SenderThrottleMessages = throttleMessages;
+                    _configuration.Save();
+                }
+                var throttleWindow = _configuration.SenderThrottleWindowSeconds;
+                ImGui.SetNextItemWidth(200);
+                if (ImGui.SliderInt(Text("Incoming_ThrottleWindow", "within (seconds)") + "##SenderThrottleWindow", ref throttleWindow, 1, 30))
+                {
+                    _configuration.SenderThrottleWindowSeconds = throttleWindow;
+                    _configuration.Save();
+                }
+                var throttleCooldown = _configuration.SenderThrottleCooldownSeconds;
+                ImGui.SetNextItemWidth(200);
+                if (ImGui.SliderInt(Text("Incoming_ThrottleCooldown", "Pause until quiet for (seconds)") + "##SenderThrottleCooldown", ref throttleCooldown, 2, 120))
+                {
+                    _configuration.SenderThrottleCooldownSeconds = throttleCooldown;
+                    _configuration.Save();
+                }
+            }
+            ImGui.Unindent();
+        }
         ImGui.Spacing();
         ImGui.Text(Resources.Incoming_LanguageDetection);
         var skipSameLanguage = _configuration.SkipSameLanguageTranslation;

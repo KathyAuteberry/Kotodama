@@ -261,6 +261,15 @@ Why P2 before P1:
 - **Files.** `Core/PartyFinderDescription.cs` (tested), `GameFunctions/PartyFinderMenu.cs`, `Plugin.cs`.
 - **Not done.** The duty name isn't passed to PLaMo as extra context (the PFML3 context comes from the profile only).
 
+### P1.8 `feat(incoming): pause translation of senders posting bursts` (added after 1.0.0.0)
+- **Scope.** Raid macros (20 lines in a few seconds) made translations drip into chat long after the macro. Once one
+  sender has N lines within W seconds (defaults 3 and 3), that line and the rest of the burst are skipped until the
+  sender has been quiet for C seconds (default 10). Every skipped line restarts the pause, so a long macro stays
+  paused to its end. Lines before the limit are still translated. One local `[KT]` notice is printed per pause (when
+  "Show translations in chat" is on). Applies to incoming chat only; outgoing and PF translations are unaffected.
+- **Files.** `Core/SenderThrottle.cs` (tested with a fake clock), `IncomingMessageHandler.cs`, `Plugin.cs`,
+  `Configuration.cs`, `UI/ConfigWindow.cs` (Incoming: toggle plus three sliders).
+
 ## P3: First-class PLaMo profile
 
 Transport decision (AUDIT §4): **raw `/api/generate` with a hand-built PFML3 prompt.** It was fastest in both runs, it's byte-identical to the benchmarked prompt, and the builder can be tested.

@@ -146,6 +146,15 @@ top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected
 - [ ] ⚠ Does the entry also appear on other right-click menus in the PF window (the listing list, the recruiter name)?
       It should appear only on the details window.
 
+## 11a. Raid macro throttle (1.0.1.0)
+
+- [ ] Someone (or an alt) posts a Japanese macro of 10+ lines: the first 2 lines are translated, then one
+      `[KT] Too many lines at once, pausing translations until they stop.` line under their name, then nothing more.
+- [ ] After they've been quiet for 10 s, their next line is translated again.
+- [ ] Normal conversation (a line every couple of seconds) is never paused.
+- [ ] Another player's lines during someone else's macro are still translated.
+- [ ] Incoming → **Pause senders who post bursts** off: every macro line is translated again.
+
 ## 12. Lifecycle and performance
 
 - [ ] While a `/tl` is pending (slow or stopped server), unload the plugin. Nothing is sent after unload, and

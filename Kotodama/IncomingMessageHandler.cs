@@ -117,6 +117,14 @@ public class TranslatedChatMessage
         /// </summary>
         public event Action? OnRequestEngineFailover;
 
+        /// <summary>
+        /// Raised once when a sender's burst pauses their translations (sender name, chat type,
+        /// sender SeString). Raised on the framework thread.
+        /// </summary>
+        public event Action<string, XivChatType, SeString>? OnSenderThrottled;
+
+        private readonly SenderThrottle _senderThrottle = new();
+
         private readonly GlossaryService _glossaryService;
         private readonly TranslationCache _translationCache;
         private readonly CancellationTokenSource _lifetimeCts = new();
@@ -354,6 +362,25 @@ public class TranslatedChatMessage
                 };
                 OnTranslationStarted?.Invoke(excludedMsg);
                 return;
+            }
+
+            // Raid macros: a burst of lines from one sender would drip in translations for a while.
+            if (_configuration.SenderThrottleEnabled)
+            {
+                var decision = _senderThrottle.Check(
+                    senderName,
+                    _configuration.SenderThrottleMessages,
+                    TimeSpan.FromSeconds(_configuration.SenderThrottleWindowSeconds),
+                    TimeSpan.FromSeconds(_configuration.SenderThrottleCooldownSeconds));
+                if (decision != ThrottleDecision.Allow)
+                {
+                    if (decision == ThrottleDecision.Suspended)
+                    {
+                        _pluginLog.Info($"Pausing translations from {senderName}: burst of lines");
+                        OnSenderThrottled?.Invoke(senderName, type, message.Sender);
+                    }
+                    return;
+                }
             }
 
             var dedupKey = $"{type}|{senderName}|{messageText}";

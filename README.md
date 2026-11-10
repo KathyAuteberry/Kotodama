@@ -19,6 +19,8 @@ changed.
 - **Editable profiles** (Raid, Casual) with free-text context and a terminology glossary, as plain files you
   can edit outside the game.
 - **Party Finder descriptions:** right-click a listing's details → "Translate (Kotodama)" (Japanese → English).
+- **Raid macro throttle:** when one sender posts a burst of lines (by default 3 within 3 seconds), the rest of the
+  burst isn't translated until they've been quiet for 10 seconds, so your chat isn't flooded with late translations.
 - **Keeps what shouldn't change:** player names, role markers, macro tags such as `<se.1>`, emoticons and
   auto-translate phrases.
 

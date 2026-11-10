@@ -94,6 +94,16 @@ namespace EchoXIV
 
         /// <summary>Adds "Translate (Kotodama)" to the Party Finder listing's context menu (JA→EN).</summary>
         public bool PartyFinderTranslation { get; set; } = true;
+
+        /// <summary>
+        /// Pause translating a sender who posts <see cref="SenderThrottleMessages"/> lines within
+        /// <see cref="SenderThrottleWindowSeconds"/> (raid macros), until they have been quiet for
+        /// <see cref="SenderThrottleCooldownSeconds"/>.
+        /// </summary>
+        public bool SenderThrottleEnabled { get; set; } = true;
+        public int SenderThrottleMessages { get; set; } = 3;
+        public int SenderThrottleWindowSeconds { get; set; } = 3;
+        public int SenderThrottleCooldownSeconds { get; set; } = 10;
         
         /// <summary>
         /// Max messages shown in the translation window
@@ -321,6 +331,24 @@ namespace EchoXIV
             if (OutgoingPreviewTimeoutSeconds < 5 || OutgoingPreviewTimeoutSeconds > 120)
             {
                 OutgoingPreviewTimeoutSeconds = Math.Clamp(OutgoingPreviewTimeoutSeconds, 5, 120);
+                changed = true;
+            }
+
+            if (SenderThrottleMessages < 2 || SenderThrottleMessages > 20)
+            {
+                SenderThrottleMessages = Math.Clamp(SenderThrottleMessages, 2, 20);
+                changed = true;
+            }
+
+            if (SenderThrottleWindowSeconds < 1 || SenderThrottleWindowSeconds > 30)
+            {
+                SenderThrottleWindowSeconds = Math.Clamp(SenderThrottleWindowSeconds, 1, 30);
+                changed = true;
+            }
+
+            if (SenderThrottleCooldownSeconds < 2 || SenderThrottleCooldownSeconds > 120)
+            {
+                SenderThrottleCooldownSeconds = Math.Clamp(SenderThrottleCooldownSeconds, 2, 120);
                 changed = true;
             }
 

@@ -836,6 +836,12 @@
   <data name="Incoming_PartyFinder"><value>Traducir descripciones del Party Finder</value></data>
   <data name="Incoming_PartyFinderTip"><value>Haz clic derecho en los detalles de un anuncio del Party Finder y elige "Translate (Kotodama)". Solo japonés → inglés; el resultado se muestra en el chat.</value></data>
   <data name="Preview_KeysHint"><value>Enter: enviar · Esc: cancelar</value></data>
+  <data name="Incoming_Throttle"><value>Pausar a quien envía ráfagas (macros de raid)</value></data>
+  <data name="Incoming_ThrottleTip"><value>Cuando alguien envía muchas líneas a la vez, el resto de la ráfaga no se traduce. La traducción se reanuda cuando lleva el tiempo de pausa sin escribir.</value></data>
+  <data name="Incoming_ThrottleMessages"><value>Líneas</value></data>
+  <data name="Incoming_ThrottleWindow"><value>en (segundos)</value></data>
+  <data name="Incoming_ThrottleCooldown"><value>Pausar hasta que calle durante (segundos)</value></data>
+  <data name="Incoming_ThrottleNotice"><value>Demasiadas líneas a la vez; traducciones en pausa hasta que pare.</value></data>
 </root>
 
 
