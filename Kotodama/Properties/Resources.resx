@@ -836,6 +836,8 @@
     <data name="Preview_Waiting"><value>{0} more waiting</value></data>
     <data name="Incoming_ShowInChat"><value>Show translations in chat</value></data>
     <data name="Incoming_ShowInChatTip"><value>Prints each translation as a "[KT] …" line below the original message. Only you see it.</value></data>
+    <data name="Incoming_PartyFinder"><value>Translate Party Finder descriptions</value></data>
+    <data name="Incoming_PartyFinderTip"><value>Right-click a Party Finder listing's details and choose "Translate (Kotodama)". Japanese → English only; the result is printed in chat.</value></data>
 </root>
 
 

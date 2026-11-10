@@ -51,6 +51,13 @@ public class TranslatedChatMessage
         /// <summary>The sender as the game sent it, for printing the translation below the original. Not saved.</summary>
         [Newtonsoft.Json.JsonIgnore]
         public SeString? SenderSeString { get; set; }
+
+        /// <summary>A Party Finder description translated from the listing's context menu.</summary>
+        public bool IsPartyFinder { get; set; }
+
+        /// <summary>Duty name of a Party Finder listing, for the chat line. Not saved.</summary>
+        [Newtonsoft.Json.JsonIgnore]
+        public string? PartyFinderDuty { get; set; }
     }
 
     /// <summary>
@@ -414,6 +421,18 @@ public class TranslatedChatMessage
             }
 
             return AutoTranslateText.Split(segments);
+        }
+
+        /// <summary>
+        /// Translates text that didn't arrive as chat (a Party Finder description) through the same
+        /// path as incoming chat: cache, profile glossary, failover, history and events.
+        /// </summary>
+        public Task TranslateExternalAsync(TranslatedChatMessage message)
+        {
+            message.IsTranslating = true;
+            message.TranslationFailed = false;
+            OnTranslationStarted?.Invoke(message);
+            return TranslateAsync(message);
         }
 
         public async Task ProcessMessageAsync(TranslatedChatMessage message)

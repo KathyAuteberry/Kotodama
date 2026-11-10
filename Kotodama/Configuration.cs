@@ -91,6 +91,9 @@ namespace EchoXIV
         /// below the original (which is left untouched). Works with the stock chat and ChatTwo.
         /// </summary>
         public bool ShowIncomingInChat { get; set; } = true;
+
+        /// <summary>Adds "Translate (Kotodama)" to the Party Finder listing's context menu (JA→EN).</summary>
+        public bool PartyFinderTranslation { get; set; } = true;
         
         /// <summary>
         /// Max messages shown in the translation window

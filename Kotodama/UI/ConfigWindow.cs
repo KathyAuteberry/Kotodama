@@ -1317,6 +1317,13 @@ public class ConfigWindow : Window, IDisposable
             _configuration.Save();
         }
         HelpText(Text("Incoming_ShowInChatTip", "Prints each translation as a \"[KT] …\" line below the original message. Only you see it."));
+        var partyFinder = _configuration.PartyFinderTranslation;
+        if (ImGui.Checkbox(Text("Incoming_PartyFinder", "Translate Party Finder descriptions") + "##PartyFinderTranslation", ref partyFinder))
+        {
+            _configuration.PartyFinderTranslation = partyFinder;
+            _configuration.Save();
+        }
+        HelpText(Text("Incoming_PartyFinderTip", "Right-click a Party Finder listing's details and choose \"Translate (Kotodama)\". Japanese → English only; the result is printed in chat."));
         ImGui.Spacing();
         ImGui.Text(Resources.Incoming_LanguageDetection);
         var skipSameLanguage = _configuration.SkipSameLanguageTranslation;

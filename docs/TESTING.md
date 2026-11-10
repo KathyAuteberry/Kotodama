@@ -1,6 +1,6 @@
 # In-game test checklist
 
-Everything below needs the running game and can't be covered by the 465 automated tests. Work through it
+Everything below needs the running game and can't be covered by the 482 automated tests. Work through it
 top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected together with the
 `/xllog` lines around it. Turn on verbose logging in Settings → General if you can.
 
@@ -127,7 +127,19 @@ top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected
 - [ ] ⚠ In combat: does the preview steal focus from movement or hotbar keys in a way that's a problem?
 - [ ] Turn the preview off again.
 
-## 11. Lifecycle and performance
+## 11. Party Finder descriptions (JA→EN)
+
+- [ ] Open a Japanese PF listing's details, right-click the details window: there's a **Translate (Kotodama)** entry.
+- [ ] Click it: an echo line `[KT] PF (<duty>, <recruiter>): <English>` appears. The listing's auto-translate phrases
+      (green arrows) appear verbatim in 【】 in front of the translation.
+- [ ] Raid profile terms are used (e.g. a listing with 消化, 練習, 散開).
+- [ ] An English listing prints "isn't Japanese; nothing to translate", with no request (verbose log).
+- [ ] With Ollama stopped: a red "Couldn't translate the Party Finder description" line.
+- [ ] Incoming → **Translate Party Finder descriptions** off removes the menu entry.
+- [ ] ⚠ Does the entry also appear on other right-click menus in the PF window (the listing list, the recruiter name)?
+      It should appear only on the details window.
+
+## 12. Lifecycle and performance
 
 - [ ] While a `/tl` is pending (slow or stopped server), unload the plugin. Nothing is sent after unload, and
       there are no exceptions in `/xllog`.

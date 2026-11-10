@@ -12,7 +12,7 @@ Built and committed locally (not pushed, not yet tested in game; see [TESTING.md
 - **F1–F3, P2.1–P2.5, P1.1–P1.6, P3.1–P3.5, P4.1–P4.6, R1, R2, R4**, plus a Kotodama README.
 - **R3** is a separate local jj change in the plogons repository: `feat(tools): support Kotodama in the manifest updater`.
 - **Not built:** P5 (design only).
-- 465 xUnit tests and 9 Python tooling tests pass. The build has 0 warnings.
+- 482 xUnit tests and 9 Python tooling tests pass. The build has 0 warnings.
 
 Deviations from the plan as written:
 
@@ -245,6 +245,17 @@ Why P2 before P1:
   input doesn't count as typing, and the preview reads Enter/Esc from ImGui's global key state.
 
 ---
+
+### P1.7 `feat: translate Party Finder descriptions` (added after testing)
+- **Scope.** "Translate (Kotodama)" in the context menu of the PF listing details window (`LookingForGroupDetail`),
+  JA→EN only. Reads `AddonLookingForGroupDetail.DescriptionString`, `PartyLeaderTextNode` and `DutyNameTextNode`;
+  auto-translate phrases in descriptions are resolved text between the AutoTranslateBegin/End icons and are kept
+  verbatim. Translation goes through the incoming path (cache, profile glossary, failover, history); the result is
+  printed as a local echo line `[KT] PF (duty, recruiter): …`.
+- **Provenance.** The approach (addon name, fields, icon markers) was learned from ChatTranslated, which is AGPL-3.0.
+  No code was copied; Kotodama's implementation is written from scratch.
+- **Files.** `Core/PartyFinderDescription.cs` (tested), `GameFunctions/PartyFinderMenu.cs`, `Plugin.cs`.
+- **Not done.** The duty name isn't passed to PLaMo as extra context (the PFML3 context comes from the profile only).
 
 ## P3: First-class PLaMo profile
 

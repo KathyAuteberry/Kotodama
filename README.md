@@ -18,6 +18,7 @@ changed.
 - **PLaMo 3 Translate** with its native prompt format, an explicit translation direction, and model warm-up.
 - **Editable profiles** (Raid, Casual) with free-text context and a terminology glossary, as plain files you
   can edit outside the game.
+- **Party Finder descriptions:** right-click a listing's details → "Translate (Kotodama)" (Japanese → English).
 - **Keeps what shouldn't change:** player names, role markers, macro tags such as `<se.1>`, emoticons and
   auto-translate phrases.
 

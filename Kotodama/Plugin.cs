@@ -48,6 +48,7 @@ namespace EchoXIV
         [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
         [PluginService] internal static IPartyList PartyList { get; private set; } = null!;
         [PluginService] internal static IKeyState KeyState { get; private set; } = null!;
+        [PluginService] internal static IContextMenu ContextMenu { get; private set; } = null!;
         
         private Configuration _configuration = null!;
         private ITranslationService _translatorService = null!;
@@ -75,6 +76,7 @@ namespace EchoXIV
         private OutgoingQueue? _outgoingQueue;
         private readonly ConfirmationGate _confirmationGate = new();
         private GameFunctions.PreviewKeyHandler? _previewKeyHandler;
+        private GameFunctions.PartyFinderMenu? _partyFinderMenu;
         private volatile bool _imGuiWantsText;
         private readonly HashSet<Guid> _echoedIncoming = new();
         private GameFunctions.ChatSender? _chatSender;
@@ -207,6 +209,7 @@ namespace EchoXIV
                 var chatTwoInput = new GameFunctions.ChatTwoInput(PluginInterface, PluginLog);
                 _windowSystem.AddWindow(new PreviewWindow(_confirmationGate, () => _outgoingQueue?.PendingCount ?? 0, chatTwoInput.IsFocusedAndEmpty));
                 _previewKeyHandler = new GameFunctions.PreviewKeyHandler(Framework, KeyState, _confirmationGate, () => _imGuiWantsText, PluginLog);
+                _partyFinderMenu = new GameFunctions.PartyFinderMenu(ContextMenu, PluginLog, () => _configuration.PartyFinderTranslation, TranslatePartyFinder);
 
                 // Initialize native hook (outgoing translation)
                 try
@@ -442,6 +445,7 @@ namespace EchoXIV
             _chatBoxHook?.Dispose();
             _outgoingQueue?.Dispose();
             _previewKeyHandler?.Dispose();
+            _partyFinderMenu?.Dispose();
 
             // Stop incoming message handler
             _incomingMessageHandler?.Dispose();
@@ -606,9 +610,86 @@ namespace EchoXIV
         /// same channel and with the same sender so it lands in the same chat tab (stock chat and
         /// ChatTwo). Printed once per message; the original line is never changed.
         /// </summary>
+        /// <summary>Translates a Party Finder description (JA→EN only) and prints it in chat. Framework thread.</summary>
+        private void TranslatePartyFinder(GameFunctions.PartyFinderListing listing)
+        {
+            if (_incomingMessageHandler == null)
+                return;
+
+            if (!string.Equals(_configuration.GetReadingLanguage(), "en", StringComparison.OrdinalIgnoreCase))
+            {
+                ChatGui.PrintError("[Kotodama] Party Finder translation is Japanese → English only. Set the language you read to English.");
+                return;
+            }
+
+            if (!PartyFinderDescription.IsJapanese(listing.Description))
+            {
+                ChatGui.Print(listing.Description.Phrases.Count > 0 || listing.RawDescription.Trim().Length > 0
+                    ? "[Kotodama] This Party Finder description isn't Japanese; nothing to translate."
+                    : "[Kotodama] This Party Finder listing has no description.");
+                return;
+            }
+
+            var message = new TranslatedChatMessage
+            {
+                Timestamp = DateTime.Now,
+                ChatType = XivChatType.Echo,
+                Sender = string.IsNullOrEmpty(listing.Recruiter) ? "Party Finder" : $"PF: {listing.Recruiter}",
+                OriginalText = listing.RawDescription,
+                TranslatableText = listing.Description.Translatable,
+                AutoTranslatePhrases = listing.Description.Phrases.ToList(),
+                IsPartyFinder = true,
+                PartyFinderDuty = listing.Duty,
+            };
+            _ = _incomingMessageHandler.TranslateExternalAsync(message);
+        }
+
+        private void PrintPartyFinderResult(TranslatedChatMessage message)
+        {
+            string line;
+            if (message.TranslationFailed)
+                line = "[Kotodama] Couldn't translate the Party Finder description. Check that your PLaMo server is reachable.";
+            else
+                line = PartyFinderDescription.FormatLine(
+                    message.TranslatedText,
+                    message.PartyFinderDuty,
+                    message.Sender.StartsWith("PF: ", StringComparison.Ordinal) ? message.Sender[4..] : null);
+
+            var failed = message.TranslationFailed;
+            _ = Framework.RunOnFrameworkThread(() =>
+            {
+                if (_shutdownCts.IsCancellationRequested)
+                    return;
+
+                if (failed)
+                {
+                    ChatGui.PrintError(line);
+                    return;
+                }
+
+                _incomingMessageHandler?.RegisterOwnPrint(line);
+                ChatGui.Print(new XivChatEntry { Type = XivChatType.Echo, Message = line });
+            });
+        }
+
         private void EchoIncomingToChat(TranslatedChatMessage message)
         {
-            if (!_configuration.ShowIncomingInChat || message.IsTranslating)
+            if (message.IsTranslating)
+                return;
+
+            if (message.IsPartyFinder)
+            {
+                lock (_echoedIncoming)
+                {
+                    if (!_echoedIncoming.Add(message.Id))
+                        return;
+                }
+
+                PrintPartyFinderResult(message);
+                return;
+            }
+
+            if (!_configuration.ShowIncomingInChat)
                 return;
 
             var line = IncomingChatEcho.Format(message.OriginalText, message.TranslatedText, message.TranslationFailed, message.IsOutgoing);
