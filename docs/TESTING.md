@@ -10,69 +10,71 @@ top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected
 
 ## 0. Build and load
 
-- [ ] `dotnet build Kotodama.sln -c Debug`
-- [ ] The dev plugin location points at
-      `Z:\home\kath\Projekty\KathyAuteberry\Kotodama\Kotodama\bin\x64\Debug\Kotodama.dll`. Note the `x64`.
-- [ ] Fresh start: if Kotodama was loaded before, delete `~/.xlcore/pluginConfigs/Kotodama.json` and the
+- [x] `dotnet build -c Release`
+- [x] The dev plugin location points at
+      `Z:\home\kath\Projekty\KathyAuteberry\Kotodama\Kotodama\bin\x64\Release\Kotodama.dll`. Note the `x64`.
+- [x] Fresh start: if Kotodama was loaded before, delete `~/.xlcore/pluginConfigs/Kotodama.json` and the
       `~/.xlcore/pluginConfigs/Kotodama/` folder.
-- [ ] Load the plugin in `/xlplugins`. No errors in `/xllog`.
+- [x] Load the plugin in `/xlplugins`. No errors in `/xllog`.
 
 ## 1. First run and local-only defaults
 
-- [ ] The welcome window shows the blue "local AI server … never uses cloud services" note, and the button
+- [x] The welcome window shows the blue "local AI server … never uses cloud services" note, and the button
       is visible without scrolling.
-- [ ] `/kotodama` → Engines shows a single **PLaMo** instance with no URL. The policy is **None (local primary only)**.
+- [x] `/kotodama` → Engines shows a single **PLaMo** instance with no URL. The policy is **None (local primary only)**.
       There's a red "no server URL yet" notice, and chat shows the same notice once.
-- [ ] `~/.xlcore/pluginConfigs/Kotodama/profiles/` has `Raid/`, `Casual/` and `.defaults/` (with a README).
-- [ ] Before any URL is set, `/tl /e hello` prints a local error and nothing is sent.
+- [x] `~/.xlcore/pluginConfigs/Kotodama/profiles/` has `Raid/`, `Casual/` and `.defaults/` (with a README).
+- [x] Before any URL is set, `/tl /e hello` prints a local error and nothing is sent.
 
 ## 2. PLaMo setup
 
-- [ ] Enter `http://fenchurch.lan:11434` and press **Test connection**. Expect four `[ok]` lines: Server, Model
+- [x] Enter `http://arthur.lan:11434` and press **Test connection**. Expect four `[ok]` lines: Server, Model
       (family plamo3), JA→EN and EN→JA, each with a latency. The window stays responsive while it runs.
-- [ ] Try a wrong URL and a wrong model name. Each gives a clear `[x]` line and nothing hangs.
-- [ ] General: writing language **English**, target language **Japanese**.
+- [x] Try a wrong URL and a wrong model name. Each gives a clear `[x]` line and nothing hangs.
+- [x] General: writing language **English**, target language **Japanese**.
 
 ## 3. `/tl` basics and channels ⚠
 
-- [ ] `/tl /e Please make sure your food hasn't expired.` gives a Japanese line in echo with ご飯 (Raid profile).
-- [ ] With the **active channel set to Party**, type `/tl hello`, then switch the active channel straight away.
+- [x] `/tl /e Please make sure your food hasn't expired.` gives a Japanese line in echo with ご飯 (Raid profile).
+- [x] With the **active channel set to Party**, type `/tl hello`, then switch the active channel straight away.
       The message must arrive in **Party**.
-- [ ] Explicit prefixes work: `/tl /p …`, `/tl /fc …`, `/tl /l1 …`, `/tl /cwl1 …`, `/tl /t First Last@World …`,
+- [x] Explicit prefixes work: `/tl /p …`, `/tl /fc …`, `/tl /l1 …`, `/tl /cwl1 …`, `/tl /t First Last@World …`,
       and `/tl /r …` after receiving a tell.
-- [ ] ⚠ **Channel mapping:** with each channel you use set as active (Say, Party, FC, LS1–8, CWLS1–8, Tell,
+- [x] ⚠ **Channel mapping:** with each channel you use set as active (Say, Party, FC, LS1–8, CWLS1–8, Tell,
       Alliance, Novice), `/tl hi` goes to that channel. If any goes to the wrong place, report which one.
       The mapping from the game's active-channel value is unverified.
-- [ ] `/tl /em waves` is refused ("not a chat channel …") and nothing is sent.
-- [ ] `/tl` with no text prints usage. `/tl on` now translates the word "on" (keywords are gone).
+- [x] `/tl /em waves` is refused ("not a chat channel …") and nothing is sent.
+- [x] `/tl` with no text prints usage. `/tl on` now translates the word "on" (keywords are gone).
 
 ## 4. Ordering and failures
 
-- [ ] Send three `/tl` lines quickly, then type a normal (untranslated) line. All four arrive in the order typed.
-- [ ] Stop Ollama (or enter a wrong URL), then `/tl /e hi`. Expect "[Kotodama] Not sent: … Your message: hi",
+- [x] Send three `/tl` lines quickly, then type a normal (untranslated) line. All four arrive in the order typed.
+- [x] Stop Ollama (or enter a wrong URL), then `/tl /e hi`. Expect "[Kotodama] Not sent: … Your message: hi",
       with nothing sent. It takes at most the timeout (default 10 s on the General tab).
-- [ ] Set **If a translation fails → Send my original message** and repeat. The original goes to the channel,
+- [x] Set **If a translation fails → Send my original message** and repeat. The original goes to the channel,
       with a notice. Set it back to Don't send.
-- [ ] With the server down, a normal line typed after a failing `/tl` still arrives once the `/tl` gives up.
+- [x] With the server down, a normal line typed after a failing `/tl` still arrives once the `/tl` gives up.
 
 ## 5. Outgoing modes ⚠
 
-- [ ] **Only /tl** (default): normal lines arrive instantly and untranslated. Up-arrow history still works.
-- [ ] **Translate everything I type** (`/kotodama mode auto`): plain lines are translated and go to the active
+- [x] **Only /tl** (default): normal lines arrive instantly and untranslated. Up-arrow history still works.
+- [x] **Translate everything I type** (`/kotodama mode auto`): plain lines are translated and go to the active
       channel; commands (`/dance`) and `/p …` lines are not translated.
-- [ ] ⚠ With auto mode, type a line containing an **auto-translate phrase** (Tab completion) or an **item link**.
+- [x] ⚠ With auto mode, type a line containing an **auto-translate phrase** (Tab completion) or an **item link**.
       It must be sent **untranslated and intact**.
-- [ ] ⚠ Your own translated line appears **once** in the translated chat window (hover shows the original) and is
+- [x] ⚠ Your own translated line appears **once** in the translated chat window (hover shows the original) and is
       not translated again as an incoming message.
-- [ ] Back to **Only /tl**.
+- [x] Back to **Only /tl**.
 
 ## 6. Incoming chat
 
-- [ ] A Japanese line in Party or PF chat is translated to English in the translated chat window (Raid profile terms).
-- [ ] ⚠ An incoming line made only of **auto-translate phrases** is shown as is, with no "(not translated)" marker.
-- [ ] ⚠ A mixed line (phrase plus Japanese text) shows the phrases in 【】 followed by the English translation.
-- [ ] English lines are left alone (with verbose logging on, no PLaMo request is logged for them).
-- [ ] With Ollama stopped, an incoming Japanese line shows the original with **(not translated)**. Retry (the
+- [!] A Japanese line in Party or PF chat is translated to English in the translated chat window (Raid profile terms).
+  - It shows in the plugin’s settings window but not in chat – at least not in ChatTwo, not sure about stock chat (but likely also not, even after disabling ChatTwo later, stock chat has no such translations)
+  - We can keep the original message intact and put a translation as a local-only message below it with a [KT] prefix, same as ChatTranslated does it
+- [x] ⚠ An incoming line made only of **auto-translate phrases** is shown as is, with no "(not translated)" marker.
+- [x] ⚠ A mixed line (phrase plus Japanese text) shows the phrases in 【】 followed by the English translation.
+- [x] English lines are left alone (with verbose logging on, no PLaMo request is logged for them).
+- [x] With Ollama stopped, an incoming Japanese line shows the original with **(not translated)**. Retry (the
       window's retry action) works once the server is back.
 
 ## 7. Local-only guarantee ⚠
@@ -92,17 +94,18 @@ top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected
 
 ## 9. Names, macros, emoticons
 
-- [ ] Add `Kath` to "Names and words to keep as written". `/tl /e You can just call me Kath.` keeps "Kath".
-- [ ] Party member names in `/tl` lines stay as written.
-- [ ] `/tl /e Stack on <t> <se.1>` keeps both tags. If the model ever drops one, the line is refused, not sent.
-- [ ] `/tl /e That was close! ;w;` keeps `;w;`.
+- [x] Add `Kath` to "Names and words to keep as written". `/tl /e You can just call me Kath.` keeps "Kath".
+- [x] Party member names in `/tl` lines stay as written.
+- [x] `/tl /e Stack on <t> <se.1>` keeps both tags. If the model ever drops one, the line is refused, not sent.
+- [x] `/tl /e That was close! ;w;` keeps `;w;`.
 
 ## 10. Translation preview (off by default)
 
-- [ ] General → turn on **Preview translations before sending**. `/tl /e hello` opens a "Send this translation?"
+- [x] General → turn on **Preview translations before sending**. `/tl /e hello` opens a "Send this translation?"
       window with the channel, your text and the translation.
-- [ ] ⚠ The window takes keyboard focus. **Enter** sends, **Esc** cancels ("Not sent: you cancelled it"). Check
+- [!] ⚠ The window takes keyboard focus. **Enter** sends, **Esc** cancels ("Not sent: you cancelled it"). Check
       that Enter doesn't also open the game's chat input, and Esc doesn't also open the game menu.
+  - Not with ChatTwo plugin installed as chat replacement
 - [ ] Send two `/tl` lines and a normal line quickly. Only the first preview shows ("2 more waiting"); the normal
       line waits until you answer.
 - [ ] Leave a preview alone: after the preview timeout it closes and nothing is sent, even with Send my original
