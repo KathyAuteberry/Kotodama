@@ -123,6 +123,10 @@ top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected
   - Retest 4: the log showed ChatTwo's input *unfocused* and empty while the preview was up, a case the old rule
     didn't cover. Now Enter/Esc answer the preview unless you're actually typing (game chat input open, or a text box
     with text in it). Possible side effect: the game may still see Enter and open ChatTwo's input afterwards.
+  - Retest 5: the first Enter opened the game's chat input before the check ran, so the preview stood aside, and the
+    second Enter went to both. Now the preview **holds keyboard focus in a small input line** ("Enter: send · Esc:
+    cancel"), which keeps the keys away from the game and ChatTwo. It only grabs focus if you weren't typing just
+    before; otherwise the old global-key fallback applies, using the state from before the key press.
 - [ ] Send two `/tl` lines and a normal line quickly. Only the first preview shows ("2 more waiting"); the normal
       line waits until you answer.
 - [ ] Leave a preview alone: after the preview timeout it closes and nothing is sent, even with Send my original

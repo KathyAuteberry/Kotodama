@@ -24,8 +24,12 @@ public sealed class PreviewWindow : Window
     private readonly Func<bool> _vanillaTyping;
     private PendingConfirmation? _shown;
     private DateTimeOffset _shownAt;
-    private bool _focusNextFrame;
+    private bool _grabFocus;
     private bool _chatIdleLastFrame;
+    private bool _typingLastFrame;
+    private bool _typingBefore;
+    private bool _inputActiveLastFrame;
+    private string _keyBuffer = string.Empty;
 
     /// <param name="chatInputIdle">
     /// True when the focused text input is a chat input with nothing typed (ChatTwo keeps its input
@@ -47,6 +51,11 @@ public sealed class PreviewWindow : Window
 
     public override bool DrawConditions()
     {
+        // Called every frame, preview or not: track whether the user is typing so a decision in
+        // this frame uses the state from before this frame's key press (an Enter can open the
+        // game's chat input or close ChatTwo's in the same frame).
+        TrackTyping();
+
         var current = _gate.Current;
         if (current == null)
         {
@@ -58,7 +67,7 @@ public sealed class PreviewWindow : Window
         {
             _shown = current;
             _shownAt = DateTimeOffset.UtcNow;
-            _focusNextFrame = true;
+            _grabFocus = true;
         }
 
         return true;
@@ -67,14 +76,10 @@ public sealed class PreviewWindow : Window
     public override void PreDraw()
     {
         WindowName = $"{Text("Preview_Title", "Send this translation?")}###KotodamaPreview";
-        if (_focusNextFrame)
-        {
-            // Never take focus from someone typing (game chat, ChatTwo). Enter/Esc also work
-            // without focus, through GameFunctions.PreviewKeyHandler.
-            if (!ImGui.GetIO().WantTextInput)
-                ImGui.SetNextWindowFocus();
-            _focusNextFrame = false;
-        }
+        // Never take focus from someone typing (game chat, ChatTwo with text). Retried every frame
+        // until it works, e.g. once the user has sent the line they were typing.
+        if (_grabFocus && !_typingBefore)
+            ImGui.SetNextWindowFocus();
 
         ImGui.SetNextWindowSizeConstraints(new Vector2(320, 0), new Vector2(600, float.MaxValue));
     }
@@ -127,19 +132,37 @@ public sealed class PreviewWindow : Window
             ImGui.TextColored(grey, string.Format(Text("Preview_Waiting", "{0} more waiting"), waiting));
         }
 
-        // ImGui key state is global, so Enter/Esc are seen whichever window has focus (with
-        // ChatTwo, often none of ours). They answer the preview unless the user is typing: the
-        // game's chat input is open, or an ImGui text box is active that isn't an empty ChatTwo
-        // input (ChatTwo keeps its input focused after sending).
-        // The previous frame's ChatTwo answer counts too: if ChatTwo draws first, the Enter press
-        // has already unfocused its input by the time we ask.
-        var wantText = ImGui.GetIO().WantTextInput;
-        var idleNow = wantText && _chatInputIdle();
-        var chatIdle = idleNow || _chatIdleLastFrame;
-        _chatIdleLastFrame = idleNow;
-        var typing = _vanillaTyping() || (wantText && !chatIdle);
-        var keysAreOurs = ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows) || !typing;
-        if (answer == null && keysAreOurs && now - _shownAt >= KeyGrace)
+        // Holding keyboard focus in an ImGui text field is the only way to keep Enter/Esc from the
+        // game: Dalamud's Win32InputHandler swallows WM_KEYDOWN (returns 0) only while
+        // io.WantTextInput is true. Without that the game opens its chat input on Enter, and ChatTwo,
+        // which hooks the game's chat-open (ChatLogRefresh), focuses its own input. Anything typed
+        // here is ignored.
+        ImGui.SetNextItemWidth(-1);
+        if (_grabFocus && !_typingBefore)
+        {
+            ImGui.SetKeyboardFocusHere();
+            _grabFocus = false;
+        }
+
+        _keyBuffer = string.Empty;
+        ImGui.InputTextWithHint("##KotodamaPreviewKeys", Text("Preview_KeysHint", "Enter: send · Esc: cancel"), ref _keyBuffer, 16);
+        var inputActive = ImGui.IsItemActive();
+        var ready = now - _shownAt >= KeyGrace;
+        if (answer == null && ImGui.IsItemDeactivated())
+        {
+            if (ImGui.IsKeyDown(ImGuiKey.Enter) || ImGui.IsKeyDown(ImGuiKey.KeypadEnter))
+                answer = ready ? true : null;
+            else if (ImGui.IsKeyDown(ImGuiKey.Escape))
+                answer = false;
+        }
+        _inputActiveLastFrame = inputActive;
+
+        // Fallback when we don't hold focus but another ImGui text input does (an empty ChatTwo
+        // input): Dalamud then routes keys to ImGui, so Enter/Esc are visible here and answer unless
+        // the user was typing in the frame before the press. With no ImGui text input at all,
+        // ImGui never receives Enter (Dalamud passes it straight to the game), so only the
+        // game-level PreviewKeyHandler can see it, too late to stop the game reacting.
+        if (answer == null && !inputActive && ready && (ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows) || !_typingBefore))
         {
             if (ImGui.IsKeyPressed(ImGuiKey.Enter, false) || ImGui.IsKeyPressed(ImGuiKey.KeypadEnter, false))
                 answer = true;
@@ -149,6 +172,22 @@ public sealed class PreviewWindow : Window
 
         if (answer != null)
             _gate.Resolve(pending.Id, answer.Value);
+    }
+
+    /// <summary>
+    /// Typing means: the game's chat input is open, or an ImGui text box other than ours is active
+    /// and it isn't an empty ChatTwo input (ChatTwo keeps its input focused after sending).
+    /// </summary>
+    private void TrackTyping()
+    {
+        var otherTextInput = ImGui.GetIO().WantTextInput && !_inputActiveLastFrame;
+        var idleNow = otherTextInput && _chatInputIdle();
+        var typingNow = _vanillaTyping() || (otherTextInput && !(idleNow || _chatIdleLastFrame));
+        _chatIdleLastFrame = idleNow;
+        _typingBefore = _typingLastFrame;
+        _typingLastFrame = typingNow;
+        if (_gate.Current == null)
+            _inputActiveLastFrame = false;
     }
 
     private static string Text(string key, string fallback) =>

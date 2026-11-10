@@ -242,7 +242,11 @@ Why P2 before P1:
   while a preview is up (`Core/Outgoing/PreviewKeyTracker.cs` holds the rules: fresh press only, nothing while a text
   input is active, a key that answered stays hidden until released). ChatTwo also keeps its own input focused after
   sending, so `GameFunctions/ChatTwoInput.cs` asks ChatTwo over IPC whether that input is empty; an empty focused
-  input doesn't count as typing, and the preview reads Enter/Esc from ImGui's global key state.
+  input doesn't count as typing, and the preview reads Enter/Esc from ImGui's global key state. Finally, the preview
+  holds keyboard focus in its own input line while you aren't typing, because only an active ImGui text input keeps
+  Enter away from the game (and so from ChatTwo, which opens on the game's chat-open action). Verified in Dalamud's
+  `Win32InputHandler`: `WM_KEYDOWN` is swallowed only while `io.WantTextInput` is true, and otherwise Enter isn't
+  even passed to ImGui.
 
 ---
 

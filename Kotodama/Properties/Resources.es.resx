@@ -835,6 +835,7 @@
   <data name="Incoming_ShowInChatTip"><value>Muestra cada traducción como una línea "[KT] …" debajo del mensaje original. Solo tú la ves.</value></data>
   <data name="Incoming_PartyFinder"><value>Traducir descripciones del Party Finder</value></data>
   <data name="Incoming_PartyFinderTip"><value>Haz clic derecho en los detalles de un anuncio del Party Finder y elige "Translate (Kotodama)". Solo japonés → inglés; el resultado se muestra en el chat.</value></data>
+  <data name="Preview_KeysHint"><value>Enter: enviar · Esc: cancelar</value></data>
 </root>
 
 
