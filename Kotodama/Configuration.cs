@@ -153,6 +153,13 @@ namespace EchoXIV
         /// </summary>
         public int EngineRecoveryCheckMinutes { get; set; } = 10;
 
+        /// <summary>
+        /// Which engines may be used besides the primary instance. Default None: the primary
+        /// must be a local engine and nothing else is tried, so chat never reaches a cloud
+        /// service unless the user opts in with Any.
+        /// </summary>
+        public FallbackPolicy FallbackPolicy { get; set; } = FallbackPolicy.None;
+
         public bool VerboseLogging { get; set; } = false;
         public bool OverlayVisible { get; set; } = true;
 
@@ -306,6 +313,12 @@ namespace EchoXIV
             if (InactivityHideTimeout < 10 || InactivityHideTimeout > 600)
             {
                 InactivityHideTimeout = 60;
+                changed = true;
+            }
+
+            if (!Enum.IsDefined(FallbackPolicy))
+            {
+                FallbackPolicy = FallbackPolicy.None;
                 changed = true;
             }
 

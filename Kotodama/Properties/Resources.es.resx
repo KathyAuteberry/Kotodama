@@ -779,6 +779,14 @@
     <data name="History_MaxSizeMbTip">
         <value>Tamaño máximo del archivo de historial guardado. Si se supera el límite, se eliminan primero los mensajes más antiguos.</value>
     </data>
+  <data name="Engines_FallbackPolicy"><value>Política de respaldo</value></data>
+  <data name="Engines_PolicyNone"><value>Ninguna (solo el motor local principal)</value></data>
+  <data name="Engines_PolicyLocalOnly"><value>Solo otros motores locales</value></data>
+  <data name="Engines_PolicyAny"><value>Cualquier motor, incluidos servicios en la nube</value></data>
+  <data name="Engines_PolicyAnyWarning"><value>El chat puede enviarse a servicios en la nube si el motor principal falla.</value></data>
+  <data name="Engines_CloudBadge"><value>nube</value></data>
+  <data name="Engines_BlockedCloudPrimary"><value>Traducción desactivada: el motor principal es un servicio en la nube, pero la política de respaldo solo permite motores locales. Elige un motor local como principal o cambia la política en /kotodama → Motores.</value></data>
+  <data name="Engines_BlockedNoEngine"><value>Traducción desactivada: no hay ningún motor de traducción activado. Activa uno en /kotodama → Motores.</value></data>
 </root>
 
 

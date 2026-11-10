@@ -404,6 +404,8 @@ public class ConfigWindow : Window, IDisposable
         ImGui.TextWrapped(Resources.Engines_Description);
         ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1f), Resources.Engines_PriorityNote);
         ImGui.Spacing();
+        DrawFallbackPolicySelector();
+        ImGui.Spacing();
 
         // Add new instance.
         ImGui.Text(Resources.Engines_Add);
@@ -470,10 +472,17 @@ public class ConfigWindow : Window, IDisposable
                         var isPrimary = instance.Id == _configuration.PrimaryEngineId;
                         var label = instanceName(instance);
                         var primaryTag = isPrimary ? $"  [{Resources.Engines_Primary}]" : "";
+                        var isCloud = !EngineLocality.IsLocal(instance);
+                        var cloudTag = isCloud ? $"  [{Text("Engines_CloudBadge", "cloud")}]" : "";
+                        // Cloud instances can't be used under a local-only policy: grey them out.
+                        var greyed = isCloud && EngineSelection.IsLocalOnly(_configuration.FallbackPolicy);
 
-                        if (ImGui.Selectable($"   {i + 1}. {label}{primaryTag}", _engineConfigTargetId == instance.Id))
+                        using (ImRaii.PushColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.TextDisabled), greyed))
                         {
-                            _engineConfigTargetId = instance.Id;
+                            if (ImGui.Selectable($"   {i + 1}. {label}{primaryTag}{cloudTag}", _engineConfigTargetId == instance.Id))
+                            {
+                                _engineConfigTargetId = instance.Id;
+                            }
                         }
 
                         var itemMin = ImGui.GetItemRectMin();
@@ -548,6 +557,51 @@ public class ConfigWindow : Window, IDisposable
             ImGui.EndTable();
         }
     }
+
+    private static readonly FallbackPolicy[] FallbackPolicies = { FallbackPolicy.None, FallbackPolicy.LocalOnly, FallbackPolicy.Any };
+
+    private void DrawFallbackPolicySelector()
+    {
+        string PolicyLabel(FallbackPolicy policy) => policy switch
+        {
+            FallbackPolicy.LocalOnly => Text("Engines_PolicyLocalOnly", "Other local engines only"),
+            FallbackPolicy.Any => Text("Engines_PolicyAny", "Any engine, including cloud services"),
+            _ => Text("Engines_PolicyNone", "None (local primary only)"),
+        };
+
+        ImGui.Text(Text("Engines_FallbackPolicy", "Fallback policy"));
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(280);
+        using (var combo = ImRaii.Combo("##FallbackPolicy", PolicyLabel(_configuration.FallbackPolicy)))
+        {
+            if (combo)
+            {
+                foreach (var policy in FallbackPolicies)
+                {
+                    if (ImGui.Selectable(PolicyLabel(policy), policy == _configuration.FallbackPolicy))
+                    {
+                        _configuration.FallbackPolicy = policy;
+                        SaveEnginesChanged();
+                    }
+                }
+            }
+        }
+
+        if (_configuration.FallbackPolicy == FallbackPolicy.Any)
+        {
+            ImGui.TextColored(new Vector4(1f, 0.7f, 0.3f, 1f),
+                Text("Engines_PolicyAnyWarning", "Chat may be sent to cloud services when the primary engine fails."));
+        }
+
+        var selection = EngineSelection.Select(_configuration.Engines, _configuration.PrimaryEngineId, _configuration.FallbackPolicy);
+        if (selection.BlockedReason is { } block)
+        {
+            ImGui.TextColored(new Vector4(1f, 0.4f, 0.4f, 1f), Plugin.GetSelectionBlockMessage(block));
+        }
+    }
+
+    private static string Text(string key, string fallback) =>
+        Resources.ResourceManager.GetString(key, Resources.Culture) ?? fallback;
 
     private static string instanceName(EngineInstance instance) =>
         string.IsNullOrWhiteSpace(instance.Name) ? GetEngineDisplayName(instance.Type) : instance.Name;

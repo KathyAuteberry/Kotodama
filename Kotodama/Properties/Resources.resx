@@ -782,6 +782,14 @@
     <data name="History_MaxSizeMbTip">
         <value>Maximum size of the persisted history file. Older messages are removed first when the limit is exceeded.</value>
     </data>
+    <data name="Engines_FallbackPolicy"><value>Fallback policy</value></data>
+    <data name="Engines_PolicyNone"><value>None (local primary only)</value></data>
+    <data name="Engines_PolicyLocalOnly"><value>Other local engines only</value></data>
+    <data name="Engines_PolicyAny"><value>Any engine, including cloud services</value></data>
+    <data name="Engines_PolicyAnyWarning"><value>Chat may be sent to cloud services when the primary engine fails.</value></data>
+    <data name="Engines_CloudBadge"><value>cloud</value></data>
+    <data name="Engines_BlockedCloudPrimary"><value>Translation is off: the primary engine is a cloud service, but the fallback policy only allows local engines. Choose a local primary engine or change the policy in /kotodama → Engines.</value></data>
+    <data name="Engines_BlockedNoEngine"><value>Translation is off: no translation engine is enabled. Enable one in /kotodama → Engines.</value></data>
 </root>
 
 

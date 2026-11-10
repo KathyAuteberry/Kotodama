@@ -52,6 +52,10 @@ namespace EchoXIV
         private LibreTranslateTranslatorService _libreTranslateTranslator = null!;
         private YandexTranslatorService _yandexTranslator = null!;
         private List<ITranslationService> _instanceServices = new();
+        // Fallback translator for the incoming/outgoing failover paths. Comes only from
+        // EngineSelection (never a hardcoded cloud engine); null when the policy allows no fallback.
+        private ITranslationService? _secondaryTranslator;
+        private EngineSelectionBlock? _lastSelectionBlock;
         private GlossaryService _glossaryService = null!;
         private TranslationCache _translationCache = null!;
         private IRomanizationService? RomanizationService
@@ -132,10 +136,9 @@ namespace EchoXIV
                     _welcomeWindow.IsOpen = true;
                 }
 
-                // Create incoming message handler
-                var secondaryTranslator = _configuration.SelectedEngine == TranslationEngine.Google 
-                    ? (ITranslationService)_papagoTranslator 
-                    : _googleTranslator;
+                // Create incoming message handler. The secondary translator was chosen by
+                // UpdateTranslationService from EngineSelection; it is null when no fallback is allowed.
+                var secondaryTranslator = _secondaryTranslator;
 
                 _incomingMessageHandler = new IncomingMessageHandler(
                     _configuration,
@@ -1102,9 +1105,12 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
                 disposable.Dispose();
             }
 
-            // Build the ordered instance list (list order = fallback priority).
+            // Build the ordered instance list ONLY from the policy-filtered selection
+            // (primary first, then allowed fallbacks in list order).
+            var selection = EngineSelection.Select(_configuration.Engines, _configuration.PrimaryEngineId, _configuration.FallbackPolicy);
+            ReportSelectionBlock(selection);
             var ordered = new List<(Guid Id, ITranslationService Translator, string DisplayName)>();
-            foreach (var instance in _configuration.Engines.Where(e => e.Enabled))
+            foreach (var instance in selection.Engines)
             {
                 ITranslationService svc;
                 switch (instance.Type)
@@ -1138,7 +1144,7 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
             }
 
             _translatorService = new TranslationRouter(
-                _configuration.PrimaryEngineId,
+                selection.Primary?.Id ?? Guid.Empty,
                 ordered,
                 _configuration.EngineRecoveryCheckMinutes,
                 PluginLog);
@@ -1146,9 +1152,9 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
             if (_configuration.VerboseLogging)
                 PluginLog.Info($"Translation engine active: {_configuration.PrimaryInstanceName}");
 
-            var secondaryTranslator = ordered.FirstOrDefault(t => t.Id != _configuration.PrimaryEngineId).Translator
-                                      ?? (ITranslationService)_googleTranslator;
-            
+            var secondaryTranslator = ordered.Count > 1 ? ordered[1].Translator : null;
+            _secondaryTranslator = secondaryTranslator;
+
             // Update translators (romanization always same engine)
             if (_incomingMessageHandler != null)
             {
@@ -1164,6 +1170,30 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
 
             // Router update no longer needed (direct engine use)
         }
+
+        private void ReportSelectionBlock(EngineSelectionResult selection)
+        {
+            var block = selection.BlockedReason;
+            if (block == _lastSelectionBlock)
+                return;
+            _lastSelectionBlock = block;
+            if (block == null)
+                return;
+
+            var message = GetSelectionBlockMessage(block.Value);
+            PluginLog.Warning($"Translation unavailable: {message}");
+            _ = Framework.RunOnFrameworkThread(() => ChatGui.PrintError($"[Kotodama] {message}"));
+        }
+
+        internal static string GetSelectionBlockMessage(EngineSelectionBlock block) => block switch
+        {
+            EngineSelectionBlock.CloudPrimaryNotAllowed => GetResourceText(
+                "Engines_BlockedCloudPrimary",
+                "Translation is off: the primary engine is a cloud service, but the fallback policy only allows local engines. Choose a local primary engine or change the policy in /kotodama → Engines."),
+            _ => GetResourceText(
+                "Engines_BlockedNoEngine",
+                "Translation is off: no translation engine is enabled. Enable one in /kotodama → Engines."),
+        };
 
         private void SwitchToGoogleFailover()
         {
