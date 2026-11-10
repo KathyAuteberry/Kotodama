@@ -5,6 +5,39 @@ File paths are relative to the repository root. "Core" means `Kotodama/Core/`: D
 the test project compiles directly (see F1). Every change must leave `dotnet build -c Debug` and
 `dotnet test -c Debug` green. Nothing is pushed or tagged without your approval.
 
+## Status (2026-11-10)
+
+Built and committed locally (not pushed, not yet tested in game; see [TESTING.md](TESTING.md)):
+
+- **F1–F3, P2.1–P2.5, P1.1–P1.5, P3.1–P3.5, P4.1–P4.6, R1, R2, R4**, plus a Kotodama README.
+- **R3** is a separate local jj change in the plogons repository: `feat(tools): support Kotodama in the manifest updater`.
+- **Not built:** P1.6 (translation preview; later, off by default) and P5 (design only).
+- 439 xUnit tests and 9 Python tooling tests pass. The build has 0 warnings.
+
+Deviations from the plan as written:
+
+- **P2.4** adds an "engine not configured" block (an empty URL never falls back to localhost). Fresh configs start
+  with a PLaMo instance (P3.4).
+- **P3.2:** the classifier's lone-letter guard also covers Latin letters, so `o/`, `o7` and a waymark `B` count as Unknown.
+- **P3.3:** PLaMo returns text that is already in the target language without a request. The live benchmark
+  uses the plugin's own path (`TranslateDetailedAsync`).
+- **P4.5:** names, emoticons and macro tags are sent as **identity glossary entries** rather than bracket
+  placeholders. A dropped macro tag fails the translation.
+- **P4.6:** in mixed incoming lines the auto-translate phrases are shown verbatim in 【】 **in front of** the
+  translation. They can never be mistranslated, but their position in the line isn't kept.
+- **P1.3:** sends skip the game's `SanitizeString` (its handling of Japanese punctuation is undocumented);
+  `OutgoingGuards.Sanitize` strips control and payload bytes instead.
+
+Live benchmark against Ollama 0.40.15 (55 cases: 48 bench plus 7 regression, `tests/Kotodama.LiveBench`):
+
+| Profile | Success | Median | p95 | Notes |
+|---|---:|---:|---:|---|
+| plain | 55/55 | 256 ms | 363 ms | Reproduces the known failures. |
+| Raid | 55/55 | 525 ms | 587 ms | Fixes food/ご飯, crash/落ちました, light/光, tower assignment, stack/spread, mitigation and cooldown names. |
+| Raid + `--keep Kath` | 7/7 (regression set) | 578 ms | 634 ms | Kath stays as written. 蘇生飛ばしてます and MT無敵受けで still fail. |
+
+Scores are not judged automatically. The CSVs are in the git-ignored `bench/runs/`.
+
 ## Recommended order
 
 **F (foundation) → P2 → P1 → P3 → P4**, with R1–R3 slotted in any time after F, and R4 last.
