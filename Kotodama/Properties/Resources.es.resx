@@ -820,6 +820,17 @@
   <data name="Profile_Folder"><value>Edita los archivos en:</value></data>
   <data name="Profile_KeepAsWritten"><value>Nombres y palabras que se mantienen tal cual (uno por línea)</value></data>
   <data name="Profile_KeepAsWrittenTip"><value>Tu personaje y los miembros del grupo se añaden automáticamente. Añade aquí apodos.</value></data>
+  <data name="Outgoing_Preview"><value>Previsualizar traducciones antes de enviarlas</value></data>
+  <data name="Outgoing_PreviewTip"><value>Cada traducción espera a Enter (enviar) o Esc (cancelar). Las líneas siguientes esperan hasta que respondas.</value></data>
+  <data name="Outgoing_PreviewTimeout"><value>Cancelar una previsualización sin respuesta tras (segundos)</value></data>
+  <data name="Preview_Title"><value>¿Enviar esta traducción?</value></data>
+  <data name="Preview_Channel"><value>Canal</value></data>
+  <data name="Preview_ActiveChannel"><value>línea tal como se escribió</value></data>
+  <data name="Preview_Original"><value>Escribiste</value></data>
+  <data name="Preview_Translation"><value>Traducción</value></data>
+  <data name="Preview_Send"><value>Enviar (Enter)</value></data>
+  <data name="Preview_Cancel"><value>Cancelar (Esc)</value></data>
+  <data name="Preview_Waiting"><value>{0} más en espera</value></data>
 </root>
 
 

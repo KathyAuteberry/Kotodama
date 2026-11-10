@@ -11,6 +11,12 @@ namespace EchoXIV.Outgoing
         StartsWithSlash,
         TooLong,
         Unchanged,
+
+        /// <summary>The user cancelled the translation preview. The original is never sent.</summary>
+        Cancelled,
+
+        /// <summary>The translation preview was not answered in time; treated as cancelled.</summary>
+        ConfirmationTimeout,
     }
 
     /// <summary>What to do with a line whose translation failed (decided per item at failure time).</summary>
@@ -95,6 +101,8 @@ namespace EchoXIV.Outgoing
             OutgoingFailureKind.StartsWithSlash => "the translation started with '/' and would have run as a command",
             OutgoingFailureKind.TooLong => "the translation is longer than the chat limit",
             OutgoingFailureKind.Unchanged => "the translation came back unchanged",
+            OutgoingFailureKind.Cancelled => "you cancelled it",
+            OutgoingFailureKind.ConfirmationTimeout => "the preview was not confirmed in time",
             _ => kind.ToString(),
         };
     }

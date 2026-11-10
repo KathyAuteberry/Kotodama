@@ -48,6 +48,15 @@ namespace EchoXIV
         /// the original is printed locally. The original is only ever sent if the user picks SendOriginal.
         /// </summary>
         public EchoXIV.Outgoing.OutgoingFailurePolicy OutgoingFailurePolicy { get; set; } = EchoXIV.Outgoing.OutgoingFailurePolicy.DoNotSend;
+
+        /// <summary>
+        /// Show each translation for confirmation before it is sent (P1.6). Off by default. Later
+        /// lines wait while a preview is open.
+        /// </summary>
+        public bool OutgoingPreview { get; set; } = false;
+
+        /// <summary>Seconds a preview waits for Enter or Esc before it counts as cancelled.</summary>
+        public int OutgoingPreviewTimeoutSeconds { get; set; } = 30;
         
         /// <summary>
         /// Language you write your own messages in.
@@ -297,6 +306,12 @@ namespace EchoXIV
             if (OutgoingTimeoutSeconds < 2 || OutgoingTimeoutSeconds > 60)
             {
                 OutgoingTimeoutSeconds = Math.Clamp(OutgoingTimeoutSeconds, 2, 60);
+                changed = true;
+            }
+
+            if (OutgoingPreviewTimeoutSeconds < 5 || OutgoingPreviewTimeoutSeconds > 120)
+            {
+                OutgoingPreviewTimeoutSeconds = Math.Clamp(OutgoingPreviewTimeoutSeconds, 5, 120);
                 changed = true;
             }
 

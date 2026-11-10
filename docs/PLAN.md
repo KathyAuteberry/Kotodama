@@ -9,10 +9,10 @@ the test project compiles directly (see F1). Every change must leave `dotnet bui
 
 Built and committed locally (not pushed, not yet tested in game; see [TESTING.md](TESTING.md)):
 
-- **F1–F3, P2.1–P2.5, P1.1–P1.5, P3.1–P3.5, P4.1–P4.6, R1, R2, R4**, plus a Kotodama README.
+- **F1–F3, P2.1–P2.5, P1.1–P1.6, P3.1–P3.5, P4.1–P4.6, R1, R2, R4**, plus a Kotodama README.
 - **R3** is a separate local jj change in the plogons repository: `feat(tools): support Kotodama in the manifest updater`.
-- **Not built:** P1.6 (translation preview; later, off by default) and P5 (design only).
-- 439 xUnit tests and 9 Python tooling tests pass. The build has 0 warnings.
+- **Not built:** P5 (design only).
+- 447 xUnit tests and 9 Python tooling tests pass. The build has 0 warnings.
 
 Deviations from the plan as written:
 
@@ -232,6 +232,11 @@ Why P2 before P1:
 - **Files.** `UI/PreviewWindow.cs`, `Kotodama/Core/OutgoingQueue.cs` (confirmation hook), config, resources.
 - **Tests.** The queue waits on confirmation, cancel drops the item, and later items wait.
 - **In-game.** Keyboard focus behaviour while in combat.
+- **As built.** `Core/Outgoing/ConfirmationGate.cs` holds the one pending preview; the window resolves it by id,
+  so a late key press can't confirm the next line. Only translated lines are previewed (pass-through lines and
+  failures aren't). Cancel and timeout never send the original, even with SendOriginal. The preview timeout is
+  separate from the translation timeout (default 30 s, 5–120). Keys are ignored for 250 ms after a preview
+  appears.
 
 ---
 

@@ -72,6 +72,7 @@ namespace EchoXIV
         private ITranslationService? _secondaryTranslator;
         private EngineSelectionBlock? _lastSelectionBlock;
         private OutgoingQueue? _outgoingQueue;
+        private readonly ConfirmationGate _confirmationGate = new();
         private GameFunctions.ChatSender? _chatSender;
         private GlossaryService _glossaryService = null!;
         private TranslationCache _translationCache = null!;
@@ -195,7 +196,11 @@ namespace EchoXIV
                     {
                         Timeout = () => TimeSpan.FromSeconds(_configuration.OutgoingTimeoutSeconds),
                         FailurePolicy = () => _configuration.OutgoingFailurePolicy,
+                        Confirmer = _confirmationGate,
+                        RequireConfirmation = () => _configuration.OutgoingPreview,
+                        ConfirmationTimeout = () => TimeSpan.FromSeconds(_configuration.OutgoingPreviewTimeoutSeconds),
                     });
+                _windowSystem.AddWindow(new PreviewWindow(_confirmationGate, () => _outgoingQueue?.PendingCount ?? 0));
 
                 // Initialize native hook (outgoing translation)
                 try

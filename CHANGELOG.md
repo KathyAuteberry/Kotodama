@@ -14,6 +14,7 @@ First Kotodama release: a fork of EchoXIV 1.0.2.1 by ssalazar217, rebuilt around
 - Messages are sent strictly in the order you typed them. Untranslated lines also wait behind pending translations.
 - When a translation fails, nothing is sent by default and your original text is shown locally. You can choose to send the original instead.
 - Translations that would run as a command, exceed the chat limit or come back unchanged are never sent.
+- Optional translation preview (off by default): each translation waits for Enter to send or Esc to cancel, and an unanswered preview is cancelled after a timeout.
 - `/tl` only translates. Settings moved to `/kotodama` (`mode`, `profile`, `reload`, `chat`, `reset`, `help`).
 
 ## PLaMo 3 Translate

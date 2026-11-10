@@ -71,7 +71,9 @@ namespace EchoXIV.GameFunctions
                     return;
 
                 var why = OutgoingGuards.Describe(reason);
-                if (sentOriginal)
+                if (reason == OutgoingFailureKind.Cancelled)
+                    _chatGui.Print($"[Kotodama] Not sent: {why}. Your message: {item.Text}");
+                else if (sentOriginal)
                     _chatGui.Print($"[Kotodama] Sent your original message untranslated: {why}.");
                 else
                     _chatGui.PrintError($"[Kotodama] Not sent: {why}. Your message: {item.Text}");

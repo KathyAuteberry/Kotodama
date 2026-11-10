@@ -54,6 +54,19 @@ namespace EchoXIV.Outgoing
         Task ReportFailureAsync(OutgoingItem item, OutgoingFailureKind reason, bool sentOriginal);
     }
 
+    /// <summary>
+    /// Asks the user to confirm a translated line before it is sent (docs/PLAN.md P1.6). While
+    /// a confirmation is pending the queue head waits, so later lines wait too.
+    /// </summary>
+    public interface IOutgoingConfirmer
+    {
+        /// <summary>
+        /// Completes with true to send, false to cancel. <paramref name="cancellationToken"/> fires at
+        /// <paramref name="deadline"/> or on shutdown; the returned task must then cancel.
+        /// </summary>
+        Task<bool> ConfirmAsync(OutgoingSend send, DateTimeOffset deadline, CancellationToken cancellationToken);
+    }
+
     public sealed class OutgoingQueueOptions
     {
         public int Capacity { get; init; } = 8;
@@ -65,6 +78,15 @@ namespace EchoXIV.Outgoing
         public Func<OutgoingFailurePolicy> FailurePolicy { get; init; } = () => OutgoingFailurePolicy.DoNotSend;
 
         public int MaxLineBytes { get; init; } = OutgoingGuards.MaxChatBytes;
+
+        /// <summary>Shows translations for confirmation when set and <see cref="RequireConfirmation"/> is true.</summary>
+        public IOutgoingConfirmer? Confirmer { get; init; }
+
+        /// <summary>Whether translated lines need confirmation. Read for every item.</summary>
+        public Func<bool> RequireConfirmation { get; init; } = () => false;
+
+        /// <summary>How long a preview waits before it counts as cancelled. Read for every item.</summary>
+        public Func<TimeSpan> ConfirmationTimeout { get; init; } = () => TimeSpan.FromSeconds(30);
     }
 
     /// <summary>
@@ -205,7 +227,48 @@ namespace EchoXIV.Outgoing
                 return;
             }
 
-            await _sink.SendAsync(new OutgoingSend(item, translatedLine, null, translation)).ConfigureAwait(false);
+            var send = new OutgoingSend(item, translatedLine, null, translation);
+            var confirmer = _options.Confirmer;
+            if (confirmer != null && _options.RequireConfirmation())
+            {
+                var confirmed = await ConfirmAsync(confirmer, send).ConfigureAwait(false);
+                if (confirmed != null)
+                {
+                    // Cancelled or timed out: never falls back to sending the original.
+                    await _sink.ReportFailureAsync(item, confirmed.Value, sentOriginal: false).ConfigureAwait(false);
+                    return;
+                }
+
+                if (_lifetime.IsCancellationRequested)
+                    return;
+            }
+
+            await _sink.SendAsync(send).ConfigureAwait(false);
+        }
+
+        /// <summary>Returns null when confirmed, otherwise why the line is not sent.</summary>
+        private async Task<OutgoingFailureKind?> ConfirmAsync(IOutgoingConfirmer confirmer, OutgoingSend send)
+        {
+            var timeout = _options.ConfirmationTimeout();
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+            deadline.CancelAfter(timeout);
+            try
+            {
+                var ok = await confirmer.ConfirmAsync(send, DateTimeOffset.UtcNow + timeout, deadline.Token).ConfigureAwait(false);
+                return ok ? null : OutgoingFailureKind.Cancelled;
+            }
+            catch (OperationCanceledException) when (!_lifetime.IsCancellationRequested)
+            {
+                return OutgoingFailureKind.ConfirmationTimeout;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                return OutgoingFailureKind.Cancelled;
+            }
         }
 
         private async Task FailAsync(OutgoingItem item, OutgoingFailureKind reason)

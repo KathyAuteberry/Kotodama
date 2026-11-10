@@ -14,6 +14,7 @@ changed.
   line and sends it to the channel you were in when you typed it.
 - **Safe failures.** Messages are sent in order. If a translation fails, nothing is sent and your original
   text is shown to you.
+- **Optional preview:** check each translation and press Enter to send or Esc to cancel.
 - **PLaMo 3 Translate** with its native prompt format, an explicit translation direction, and model warm-up.
 - **Editable profiles** (Raid, Casual) with free-text context and a terminology glossary, as plain files you
   can edit outside the game.

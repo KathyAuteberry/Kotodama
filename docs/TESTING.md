@@ -1,6 +1,6 @@
 # In-game test checklist
 
-Everything below needs the running game and can't be covered by the 439 automated tests. Work through it
+Everything below needs the running game and can't be covered by the 447 automated tests. Work through it
 top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected together with the
 `/xllog` lines around it. Turn on verbose logging in Settings → General if you can.
 
@@ -97,7 +97,20 @@ top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected
 - [ ] `/tl /e Stack on <t> <se.1>` keeps both tags. If the model ever drops one, the line is refused, not sent.
 - [ ] `/tl /e That was close! ;w;` keeps `;w;`.
 
-## 10. Lifecycle and performance
+## 10. Translation preview (off by default)
+
+- [ ] General → turn on **Preview translations before sending**. `/tl /e hello` opens a "Send this translation?"
+      window with the channel, your text and the translation.
+- [ ] ⚠ The window takes keyboard focus. **Enter** sends, **Esc** cancels ("Not sent: you cancelled it"). Check
+      that Enter doesn't also open the game's chat input, and Esc doesn't also open the game menu.
+- [ ] Send two `/tl` lines and a normal line quickly. Only the first preview shows ("2 more waiting"); the normal
+      line waits until you answer.
+- [ ] Leave a preview alone: after the preview timeout it closes and nothing is sent, even with Send my original
+      message selected.
+- [ ] ⚠ In combat: does the preview steal focus from movement or hotbar keys in a way that's a problem?
+- [ ] Turn the preview off again.
+
+## 11. Lifecycle and performance
 
 - [ ] While a `/tl` is pending (slow or stopped server), unload the plugin. Nothing is sent after unload, and
       there are no exceptions in `/xllog`.
@@ -107,5 +120,4 @@ top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected
 ## Known limitations (not bugs)
 
 - 蘇生飛ばしてます and MT無敵受けで still translate wrongly with the Raid profile (see the live benchmark notes in `docs/PLAN.md`).
-- The translation preview (P1.6) isn't built yet.
 - Conversational context (P5) is design only.

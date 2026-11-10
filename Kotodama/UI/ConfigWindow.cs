@@ -670,6 +670,28 @@ public class ConfigWindow : Window, IDisposable
         }
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(Text("Outgoing_TimeoutTip", "Messages are sent in order, so later lines wait for a slow translation. Keep this short."));
+
+        ImGui.Spacing();
+        var preview = _configuration.OutgoingPreview;
+        if (ImGui.Checkbox(Text("Outgoing_Preview", "Preview translations before sending") + "##OutgoingPreview", ref preview))
+        {
+            _configuration.OutgoingPreview = preview;
+            _configuration.Save();
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(Text("Outgoing_PreviewTip", "Each translation waits for Enter (send) or Esc (cancel). Later lines wait until you answer."));
+
+        if (_configuration.OutgoingPreview)
+        {
+            var previewTimeout = _configuration.OutgoingPreviewTimeoutSeconds;
+            ImGui.Text(Text("Outgoing_PreviewTimeout", "Cancel an unanswered preview after (seconds)"));
+            ImGui.SetNextItemWidth(200);
+            if (ImGui.SliderInt("##OutgoingPreviewTimeout", ref previewTimeout, 5, 120))
+            {
+                _configuration.OutgoingPreviewTimeoutSeconds = previewTimeout;
+                _configuration.Save();
+            }
+        }
     }
 
     private void DrawProfileSelector()
