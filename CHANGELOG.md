@@ -1,4 +1,4 @@
-# Kotodama 0.1.0.0 — release prepared
+# Kotodama 1.0.0.0 — first release
 
 First Kotodama release: a fork of EchoXIV 1.0.2.1 by ssalazar217, rebuilt around fast Japanese ⇄ English chat translation with a local PLaMo 3 Translate model.
 
