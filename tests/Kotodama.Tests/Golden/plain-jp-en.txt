@@ -1,0 +1,1 @@
+<|plamo:tag|>dataset<|plamo:msg|>translation<|plamo:tag|>input<|plamo:msg|>軽減お願いします<|plamo:tag|>output<|plamo:key|>lang<|plamo:val|>en<|plamo:msg|>
