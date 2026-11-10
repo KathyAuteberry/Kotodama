@@ -176,18 +176,13 @@ namespace EchoXIV
                 // Initialize native hook (outgoing translation)
                 try
                 {
-_chatBoxHook = new GameFunctions.ChatBoxHook(
-                         _configuration,
-                         _translatorService,
-                         secondaryTranslator,
-                         _glossaryService,
-                         _translationCache,
-                         _incomingMessageHandler!,
-                         PluginLog,
-                         ClientState,
-                         GameInteropProvider,
-                         HandleEngineFailure
-                     );
+                    _chatBoxHook = new GameFunctions.ChatBoxHook(
+                        _configuration,
+                        () => _outgoingQueue,
+                        _incomingMessageHandler!,
+                        PluginLog,
+                        ChatGui,
+                        GameInteropProvider);
                     _chatBoxHook.Enable();
                 }
                 catch (Exception ex)
@@ -401,7 +396,9 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
         {
             _shutdownCts.Cancel();
 
-            // Stop outgoing sends first: nothing may reach the game after unload starts.
+            // Stop outgoing first: unhook so no new lines are queued, then stop the queue so
+            // nothing reaches the game after unload starts.
+            _chatBoxHook?.Dispose();
             _outgoingQueue?.Dispose();
 
             // Stop incoming message handler
@@ -420,9 +417,6 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
             }
             _instanceServices.Clear();
 
-            // Stop native hook
-            _chatBoxHook?.Dispose();
-            
             // Remove windows
             _windowSystem?.RemoveAllWindows();
 
@@ -911,14 +905,7 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
                 _incomingMessageHandler.UpdateTranslator(_translatorService);
                 _incomingMessageHandler.UpdateSecondaryTranslator(secondaryTranslator);
             }
-            
-            if (_chatBoxHook != null)
-            {
-                _chatBoxHook.UpdateTranslators(_translatorService, secondaryTranslator);
-                if (_configuration.VerboseLogging) PluginLog.Info("ChatBoxHook: translator updated.");
-            }
-
-            // Router update no longer needed (direct engine use)
+            // The outgoing queue reads _translatorService for every item; nothing to update there.
         }
 
         private void ReportSelectionBlock(EngineSelectionResult selection)
