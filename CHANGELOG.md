@@ -1,3 +1,13 @@
+# Kotodama 1.0.2.0 — no more fake translations of English lines
+
+## Incoming messages
+
+- Casual English containing a game term in lower case (`tea is fun`, `do it in pf`) no longer gets a `[KT]` line that only changes the capitalisation (`TEA is fun`). The line was never sent to the model: the built-in term list restored `tea` as `TEA`, and the changed case looked like a translation. Untranslated lines now keep the player's own spelling, including ones already in the translation cache.
+
+## Outgoing messages
+
+- The same applied to outgoing lines that didn't need translating: a capitalisation change could get past the "came back unchanged" check and be sent. Such lines are now treated as unchanged and not sent.
+
 # Kotodama 1.0.1.0 — raid macro throttle
 
 ## Incoming messages

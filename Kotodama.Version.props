@@ -2,7 +2,7 @@
   <!-- Single source of the release version. Assembly, file and tag versions append .0 (vX.Y.Z.0),
        which the plogons manifest updater requires. -->
   <PropertyGroup>
-    <KotodamaVersion>1.0.1</KotodamaVersion>
+    <KotodamaVersion>1.0.2</KotodamaVersion>
     <Version>$(KotodamaVersion)</Version>
     <AssemblyVersion>$(KotodamaVersion).0</AssemblyVersion>
     <FileVersion>$(AssemblyVersion)</FileVersion>
