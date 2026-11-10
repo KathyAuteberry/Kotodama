@@ -1,0 +1,40 @@
+name: Build and test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer commit on the same branch/PR supersedes the running build.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    - name: Install .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 10.0.x
+
+    - name: Download Dalamud
+      shell: pwsh
+      run: |
+        Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile latest.zip
+        Expand-Archive -Force latest.zip "$env:AppData\XIVLauncher\addon\Hooks\dev"
+
+    # Debug only: Release builds are produced exclusively by the tag release workflow.
+    - name: Build (Debug)
+      run: dotnet build Kotodama.sln --configuration Debug
+
+    - name: Run tests
+      run: dotnet test Kotodama.sln --configuration Debug --no-build --logger GitHubActions
