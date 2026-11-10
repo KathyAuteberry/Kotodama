@@ -42,6 +42,12 @@ namespace EchoXIV
         /// Later lines wait behind it (strict ordering), so this stays short.
         /// </summary>
         public int OutgoingTimeoutSeconds { get; set; } = 10;
+
+        /// <summary>
+        /// What happens when an outgoing translation fails. Default DoNotSend: nothing is sent and
+        /// the original is printed locally. The original is only ever sent if the user picks SendOriginal.
+        /// </summary>
+        public EchoXIV.Outgoing.OutgoingFailurePolicy OutgoingFailurePolicy { get; set; } = EchoXIV.Outgoing.OutgoingFailurePolicy.DoNotSend;
         
         /// <summary>
         /// Language you write your own messages in.
@@ -281,6 +287,12 @@ namespace EchoXIV
             if (OutgoingTimeoutSeconds < 2 || OutgoingTimeoutSeconds > 60)
             {
                 OutgoingTimeoutSeconds = Math.Clamp(OutgoingTimeoutSeconds, 2, 60);
+                changed = true;
+            }
+
+            if (!Enum.IsDefined(OutgoingFailurePolicy))
+            {
+                OutgoingFailurePolicy = EchoXIV.Outgoing.OutgoingFailurePolicy.DoNotSend;
                 changed = true;
             }
 

@@ -170,7 +170,7 @@ namespace EchoXIV
                     new OutgoingQueueOptions
                     {
                         Timeout = () => TimeSpan.FromSeconds(_configuration.OutgoingTimeoutSeconds),
-                        FailurePolicy = () => OutgoingFailurePolicy.DoNotSend,
+                        FailurePolicy = () => _configuration.OutgoingFailurePolicy,
                     });
 
                 // Initialize native hook (outgoing translation)

@@ -223,6 +223,56 @@ public sealed class OutgoingQueueTests : IDisposable
         Assert.Equal("[stack]", _sink.Sent[0].Translation!.NativeText);
     }
 
+    [Theory]
+    [InlineData("", OutgoingFailurePolicy.DoNotSend)]
+    [InlineData("", OutgoingFailurePolicy.SendOriginal)]
+    [InlineData("/xlplugins", OutgoingFailurePolicy.DoNotSend)]
+    [InlineData("/xlplugins", OutgoingFailurePolicy.SendOriginal)]
+    [InlineData("hello there", OutgoingFailurePolicy.DoNotSend)]
+    [InlineData("hello there", OutgoingFailurePolicy.SendOriginal)]
+    public async Task Every_guard_failure_follows_the_policy(string translation, OutgoingFailurePolicy policy)
+    {
+        var queue = Queue(policy: policy);
+        _translator.Results["hello there"] = translation;
+
+        queue.TryEnqueue(Translate("hello there", "/l2"));
+
+        var failure = await _sink.WaitForFailure();
+        var sendOriginal = policy == OutgoingFailurePolicy.SendOriginal;
+        Assert.Equal(sendOriginal, failure.SentOriginal);
+        Assert.Equal(sendOriginal ? new[] { "/l2 hello there" } : Array.Empty<string>(), _sink.Lines);
+    }
+
+    [Fact]
+    public async Task SendOriginal_never_sends_an_original_that_does_not_fit()
+    {
+        var queue = Queue(policy: OutgoingFailurePolicy.SendOriginal);
+        var huge = new string('x', 460);
+        _translator.Throw = new InvalidOperationException();
+
+        queue.TryEnqueue(Translate(huge));
+
+        var failure = await _sink.WaitForFailure();
+        Assert.False(failure.SentOriginal);
+        Assert.Empty(_sink.Sent);
+    }
+
+    [Fact]
+    public async Task Policy_is_read_when_the_failure_happens()
+    {
+        var policy = OutgoingFailurePolicy.DoNotSend;
+        _queue = new OutgoingQueue(_translator, _sink, new OutgoingQueueOptions { FailurePolicy = () => policy });
+        _translator.Block = new TaskCompletionSource();
+        _translator.Throw = new InvalidOperationException();
+
+        _queue.TryEnqueue(Translate("late"));
+        await _translator.WaitForCalls(1);
+        policy = OutgoingFailurePolicy.SendOriginal;
+        _translator.Block.SetResult();
+
+        Assert.True((await _sink.WaitForFailure()).SentOriginal);
+    }
+
     private static async Task WaitUntil(Func<bool> condition)
     {
         var deadline = DateTime.UtcNow + Wait;

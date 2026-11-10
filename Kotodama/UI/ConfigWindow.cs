@@ -599,6 +599,48 @@ public class ConfigWindow : Window, IDisposable
             OutgoingMode.AutoIntercept => Text("Outgoing_ModeAutoTip", "Every line you type is translated before it is sent. Commands are never translated."),
             _ => Text("Outgoing_ModeExplicitTip", "Lines you type are sent as written. Use /tl <message> to translate one."),
         });
+
+        if (_configuration.OutgoingMode == OutgoingMode.Off)
+            return;
+
+        ImGui.Spacing();
+        string PolicyLabel(OutgoingFailurePolicy policy) => policy == OutgoingFailurePolicy.SendOriginal
+            ? Text("Outgoing_FailureSendOriginal", "Send my original message")
+            : Text("Outgoing_FailureDoNotSend", "Don't send; show me the original");
+
+        ImGui.Text(Text("Outgoing_FailurePolicy", "If a translation fails"));
+        ImGui.SetNextItemWidth(280);
+        using (var combo = ImRaii.Combo("##OutgoingFailurePolicy", PolicyLabel(_configuration.OutgoingFailurePolicy)))
+        {
+            if (combo)
+            {
+                foreach (var policy in new[] { OutgoingFailurePolicy.DoNotSend, OutgoingFailurePolicy.SendOriginal })
+                {
+                    if (ImGui.Selectable(PolicyLabel(policy), policy == _configuration.OutgoingFailurePolicy))
+                    {
+                        _configuration.OutgoingFailurePolicy = policy;
+                        _configuration.Save();
+                    }
+                }
+            }
+        }
+
+        if (_configuration.OutgoingFailurePolicy == OutgoingFailurePolicy.SendOriginal)
+        {
+            ImGui.TextColored(new Vector4(1f, 0.7f, 0.3f, 1f),
+                Text("Outgoing_FailureSendOriginalWarning", "Your untranslated text will be sent to the channel when translation fails."));
+        }
+
+        var timeout = _configuration.OutgoingTimeoutSeconds;
+        ImGui.Text(Text("Outgoing_Timeout", "Translation timeout (seconds)"));
+        ImGui.SetNextItemWidth(200);
+        if (ImGui.SliderInt("##OutgoingTimeout", ref timeout, 2, 60))
+        {
+            _configuration.OutgoingTimeoutSeconds = timeout;
+            _configuration.Save();
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(Text("Outgoing_TimeoutTip", "Messages are sent in order, so later lines wait for a slow translation. Keep this short."));
     }
 
     private static readonly FallbackPolicy[] FallbackPolicies = { FallbackPolicy.None, FallbackPolicy.LocalOnly, FallbackPolicy.Any };

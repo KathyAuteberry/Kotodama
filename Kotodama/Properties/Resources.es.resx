@@ -797,6 +797,12 @@
   <data name="Outgoing_ModeOffTip"><value>No se traduce nada de lo que escribes; /tl está desactivado.</value></data>
   <data name="Outgoing_ModeExplicitTip"><value>Lo que escribes se envía tal cual. Usa /tl &lt;mensaje&gt; para traducir uno.</value></data>
   <data name="Outgoing_ModeAutoTip"><value>Cada línea que escribes se traduce antes de enviarse. Los comandos nunca se traducen.</value></data>
+  <data name="Outgoing_FailurePolicy"><value>Si una traducción falla</value></data>
+  <data name="Outgoing_FailureDoNotSend"><value>No enviar; mostrarme el original</value></data>
+  <data name="Outgoing_FailureSendOriginal"><value>Enviar mi mensaje original</value></data>
+  <data name="Outgoing_FailureSendOriginalWarning"><value>Tu texto sin traducir se enviará al canal cuando falle la traducción.</value></data>
+  <data name="Outgoing_Timeout"><value>Tiempo de espera de traducción (segundos)</value></data>
+  <data name="Outgoing_TimeoutTip"><value>Los mensajes se envían en orden, así que las líneas siguientes esperan a una traducción lenta. Mantenlo corto.</value></data>
 </root>
 
 
