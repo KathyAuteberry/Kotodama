@@ -108,7 +108,7 @@ namespace EchoXIV.GameFunctions
                     _configuration.OutgoingMode,
                     originalText,
                     _configuration.ExcludedMessages.Contains(originalText),
-                    isChannelCommand: false,
+                    ChannelPrefixParser.IsChannelCommand(originalText),
                     hasPayload: message->AsSpan().IndexOf((byte)0x02) >= 0,
                     queueEmpty: true);
 

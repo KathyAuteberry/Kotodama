@@ -44,6 +44,7 @@ namespace EchoXIV
         [PluginService] internal static IGameGui GameGui { get; private set; } = null!;
         [PluginService] internal static IPlayerState PlayerState { get; private set; } = null!;
         [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null!;
+        [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
         
         private Configuration _configuration = null!;
         private ITranslationService _translatorService = null!;
@@ -575,7 +576,13 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
                 return;
             }
 
-            TranslateAndSend(args);
+            if (!TryResolveOutgoing(args, out var resolved, out var error))
+            {
+                ChatGui.PrintError($"[Kotodama] {error}");
+                return;
+            }
+
+            TranslateAndSend(resolved);
         }
 
         /// <summary>/kotodama: settings window and plugin commands.</summary>
@@ -677,7 +684,7 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
             }
         }
 
-        private void TranslateAndSend(string input, bool allowFailoverRetry = true)
+        private void TranslateAndSend(ResolvedOutgoing input, bool allowFailoverRetry = true)
         {
             // Traducir async
             _ = Task.Run(async () =>
@@ -685,7 +692,7 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
                 var sw = Stopwatch.StartNew();
                 try
                 {
-                    var (prefix, message, type, recipient) = ParseChannelAndMessage(input);
+                    var (prefix, message, type, recipient) = input;
 
                     if (string.IsNullOrWhiteSpace(message))
                     {
@@ -805,7 +812,7 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
                     PluginLog.Warning(ex, "Manual translation timed out. Sending original message instead.");
                     _ = Framework.RunOnFrameworkThread(() =>
                     {
-                        var (prefix, message, type, recipient) = ParseChannelAndMessage(input);
+                        var (prefix, message, type, recipient) = input;
                         if (string.IsNullOrWhiteSpace(message))
                         {
                             return;
@@ -857,9 +864,9 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
             }, _shutdownCts.Token);
         }
 
-        private void SendOriginalAfterTranslationFailure(string input)
+        private void SendOriginalAfterTranslationFailure(ResolvedOutgoing input)
         {
-            var (prefix, message, type, recipient) = ParseChannelAndMessage(input);
+            var (prefix, message, type, recipient) = input;
             if (string.IsNullOrWhiteSpace(message))
                 return;
 
@@ -876,189 +883,109 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
             });
         }
 
-        private unsafe (string? prefix, string message, XivChatType type, string recipient) ParseChannelAndMessage(string input)
+        /// <summary>
+        /// An outgoing line whose channel was resolved when it was entered. <see cref="Prefix"/> is
+        /// always an explicit channel command, so sending never depends on the active channel later.
+        /// </summary>
+        private sealed record ResolvedOutgoing(string Prefix, string Message, XivChatType Type, string Recipient);
+
+        /// <summary>
+        /// Parses /tl arguments and resolves the channel. Must run on the framework thread (it reads
+        /// the active chat channel and the last tell partner from game memory).
+        /// </summary>
+        private bool TryResolveOutgoing(string args, out ResolvedOutgoing resolved, out string error)
         {
-            var trimmed = input.Trim();
-            if (string.IsNullOrWhiteSpace(trimmed)) return (null, string.Empty, XivChatType.Debug, string.Empty);
-
-            // Detect channel command prefixes such as /p, /t, or /r.
-            var match = Regex.Match(trimmed, @"^(/[a-z]+)\s*(.*)$", RegexOptions.IgnoreCase);
-            
-            if (match.Success)
+            resolved = null!;
+            var parsed = ChannelPrefixParser.Parse(args);
+            if (parsed.IsError)
             {
-                var command = match.Groups[1].Value.ToLower();
-                var remaining = match.Groups[2].Value.Trim();
-                
-                switch (command)
+                error = parsed.Error switch
                 {
-                    case "/p": case "/party": 
-                        return (command, remaining, XivChatType.Party, string.Empty);
-                    case "/fc": case "/freecompany": 
-                        return (command, remaining, XivChatType.FreeCompany, string.Empty);
-                    case "/sh": case "/shout": 
-                        return (command, remaining, XivChatType.Shout, string.Empty);
-                    case "/y": case "/yell": 
-                        return (command, remaining, XivChatType.Yell, string.Empty);
-                    case "/s": case "/say": 
-                        return (command, remaining, XivChatType.Say, string.Empty);
-                    case "/a": case "/alliance": 
-                        return (command, remaining, XivChatType.Alliance, string.Empty);
-                    case "/e": case "/echo":
-                        return (command, remaining, XivChatType.Echo, string.Empty);
-                    
-                    case "/l1": case "/linkshell1": return (command, remaining, XivChatType.Ls1, string.Empty);
-                    case "/l2": case "/linkshell2": return (command, remaining, XivChatType.Ls2, string.Empty);
-                    case "/l3": case "/linkshell3": return (command, remaining, XivChatType.Ls3, string.Empty);
-                    case "/l4": case "/linkshell4": return (command, remaining, XivChatType.Ls4, string.Empty);
-                    case "/l5": case "/linkshell5": return (command, remaining, XivChatType.Ls5, string.Empty);
-                    case "/l6": case "/linkshell6": return (command, remaining, XivChatType.Ls6, string.Empty);
-                    case "/l7": case "/linkshell7": return (command, remaining, XivChatType.Ls7, string.Empty);
-                    case "/l8": case "/linkshell8": return (command, remaining, XivChatType.Ls8, string.Empty);
-
-                    case "/cwl1": case "/cwlinkshell1": return (command, remaining, XivChatType.CrossLinkShell1, string.Empty);
-                    case "/cwl2": case "/cwlinkshell2": return (command, remaining, XivChatType.CrossLinkShell2, string.Empty);
-                    case "/cwl3": case "/cwlinkshell3": return (command, remaining, XivChatType.CrossLinkShell3, string.Empty);
-                    case "/cwl4": case "/cwlinkshell4": return (command, remaining, XivChatType.CrossLinkShell4, string.Empty);
-                    case "/cwl5": case "/cwlinkshell5": return (command, remaining, XivChatType.CrossLinkShell5, string.Empty);
-                    case "/cwl6": case "/cwlinkshell6": return (command, remaining, XivChatType.CrossLinkShell6, string.Empty);
-                    case "/cwl7": case "/cwlinkshell7": return (command, remaining, XivChatType.CrossLinkShell7, string.Empty);
-                    case "/cwl8": case "/cwlinkshell8": return (command, remaining, XivChatType.CrossLinkShell8, string.Empty);
-                    
-                    case "/r": case "/reply":
-                    {
-                        var agent = AgentChatLog.Instance();
-                        if (agent != null)
-                        {
-                            var recipient = agent->TellPlayerName.ToString();
-                            if (!string.IsNullOrEmpty(recipient))
-                            {
-                                return (command, remaining, XivChatType.TellOutgoing, recipient);
-                            }
-                        }
-                        return (command, remaining, XivChatType.TellOutgoing, GetResourceText("Tell_DefaultRecipient", "Recipient"));
-                    }
-
-                    case "/t": case "/tell":
-                    {
-                        // Handle /t "First Last@World" Message
-                        if (remaining.StartsWith("\""))
-                        {
-                            var endQuoteIndex = remaining.IndexOf("\"", 1);
-                            if (endQuoteIndex != -1)
-                            {
-                                var recipient = remaining.Substring(1, endQuoteIndex - 1);
-                                var message = remaining.Substring(endQuoteIndex + 1).Trim();
-                                return ($"{command} \"{recipient}\"", message, XivChatType.TellOutgoing, recipient);
-                            }
-                        }
-                        
-                        // Handle /t Name@World or /t First Last
-                        var parts = remaining.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                        if (parts.Length >= 2)
-                        {
-                            // First token contains @: single-word name World@World
-                            if (parts[0].Contains("@"))
-                            {
-                                var recipient = parts[0];
-                                var message = string.Join(" ", parts.Skip(1));
-                                return ($"{command} {recipient}", message, XivChatType.TellOutgoing, recipient);
-                            }
-                            
-                            // Otherwise assume First Last (FFXIV names have two parts)
-                            if (parts.Length >= 3)
-                            {
-                                var recipient = $"{parts[0]} {parts[1]}";
-                                var message = string.Join(" ", parts.Skip(2));
-                                return ($"{command} {recipient}", message, XivChatType.TellOutgoing, recipient);
-                            }
-                            
-                            // Single-word name fallback
-                            var fallbackRecipient = parts[0];
-                            var fallbackMessage = string.Join(" ", parts.Skip(1));
-                            return ($"{command} {fallbackRecipient}", fallbackMessage, XivChatType.TellOutgoing, fallbackRecipient);
-                        }
-                        break;
-                    }
-                }
-                
-                // Unknown /command: let the game handle it; mark as Debug for history
-                return (null, trimmed, XivChatType.Debug, string.Empty);
+                    ChannelParseError.UnsupportedCommand => $"'{parsed.Command}' is not a chat channel Kotodama can send to. Use /p, /fc, /a, /s, /sh, /y, /l1-8, /cwl1-8, /t, /r or /e.",
+                    ChannelParseError.MissingTellRecipient => "Tell needs a recipient: /tl /t First Last@World message.",
+                    _ => "No message to translate.",
+                };
+                return false;
             }
 
-            // Implicit channel (no / prefix)
-            var activeType = XivChatType.Debug;
-            var activeRecipient = string.Empty;
-            
-            var agentChat = AgentChatLog.Instance();
+            var target = parsed.Target ?? CaptureActiveChannel();
+            if (target == null)
+            {
+                error = "The active chat channel can't be addressed explicitly. Add a channel, e.g. /tl /p message.";
+                return false;
+            }
+
+            if (target.Kind == ChatChannelKind.Reply)
+            {
+                target = ResolveReplyTarget();
+                if (target == null)
+                {
+                    error = "Nobody to reply to yet.";
+                    return false;
+                }
+            }
+
+            resolved = new ResolvedOutgoing(target.Prefix, parsed.Body, ToXivChatType(target), target.TellRecipient ?? string.Empty);
+            error = string.Empty;
+            return true;
+        }
+
+        /// <summary>The active chat input channel as an explicit target. Framework thread only.</summary>
+        internal static unsafe ChannelTarget? CaptureActiveChannel()
+        {
             var shell = RaptureShellModule.Instance();
+            if (shell == null)
+                return null;
 
-            if (agentChat != null)
-            {
-                switch (agentChat->CurrentChannel)
-                {
-                    case ChatChannel.Say:
-                        activeType = XivChatType.Say;
-                        break;
-                    case ChatChannel.Party:
-                        activeType = XivChatType.Party;
-                        break;
-                    case ChatChannel.Alliance:
-                        activeType = XivChatType.Alliance;
-                        break;
-                }
-            }
-            
-            if (shell != null)
-            {
-                var gameChatType = (uint)shell->ChatType;
-                if (activeType == XivChatType.Debug)
-                {
-                    activeType = MapActiveInputChannelToChatType(gameChatType);
-                }
-
-                if (activeType == XivChatType.TellOutgoing && agentChat != null)
-                {
-                    activeRecipient = agentChat->TellPlayerName.ToString();
-                }
-            }
-
-            return (null, trimmed, activeType, activeRecipient);
+            return ChannelPrefixParser.FromInputChannel(shell->ChatType, shell->TellName.ToString(), shell->TellWorld.ToString());
         }
 
-        private static XivChatType MapActiveInputChannelToChatType(uint inputChannel)
+        /// <summary>Resolves "/r" to the last tell partner, at entry time. Framework thread only.</summary>
+        private static unsafe ChannelTarget? ResolveReplyTarget()
         {
-            return inputChannel switch
+            var agent = AgentChatLog.Instance();
+            if (agent == null)
+                return null;
+
+            var name = agent->TellPlayerName.ToString();
+            if (string.IsNullOrWhiteSpace(name))
+                return null;
+
+            string? world = null;
+            if (agent->TellWorldId != 0 &&
+                DataManager.GetExcelSheet<Lumina.Excel.Sheets.World>().TryGetRow(agent->TellWorldId, out var row))
             {
-                0 => XivChatType.TellOutgoing,
-                1 => XivChatType.Say,
-                2 => XivChatType.Party,
-                3 => XivChatType.Alliance,
-                4 => XivChatType.Yell,
-                5 => XivChatType.Shout,
-                6 => XivChatType.FreeCompany,
-                7 => XivChatType.PvPTeam,
-                8 => XivChatType.NoviceNetwork,
-                9 => XivChatType.CrossLinkShell1,
-                10 => XivChatType.CrossLinkShell2,
-                11 => XivChatType.CrossLinkShell3,
-                12 => XivChatType.CrossLinkShell4,
-                13 => XivChatType.CrossLinkShell5,
-                14 => XivChatType.CrossLinkShell6,
-                15 => XivChatType.CrossLinkShell7,
-                16 => XivChatType.CrossLinkShell8,
-                17 => XivChatType.TellOutgoing,
-                18 => XivChatType.TellOutgoing,
-                19 => XivChatType.Ls1,
-                20 => XivChatType.Ls2,
-                21 => XivChatType.Ls3,
-                22 => XivChatType.Ls4,
-                23 => XivChatType.Ls5,
-                24 => XivChatType.Ls6,
-                25 => XivChatType.Ls7,
-                26 => XivChatType.Ls8,
-                _ => XivChatType.Debug,
-            };
+                world = row.Name.ExtractText();
+            }
+
+            return ChannelTarget.Tell(name, world);
         }
+
+        private static XivChatType ToXivChatType(ChannelTarget target) => target.Kind switch
+        {
+            ChatChannelKind.Say => XivChatType.Say,
+            ChatChannelKind.Party => XivChatType.Party,
+            ChatChannelKind.Alliance => XivChatType.Alliance,
+            ChatChannelKind.Yell => XivChatType.Yell,
+            ChatChannelKind.Shout => XivChatType.Shout,
+            ChatChannelKind.FreeCompany => XivChatType.FreeCompany,
+            ChatChannelKind.PvpTeam => XivChatType.PvPTeam,
+            ChatChannelKind.NoviceNetwork => XivChatType.NoviceNetwork,
+            ChatChannelKind.Linkshell => target.Index switch
+            {
+                1 => XivChatType.Ls1, 2 => XivChatType.Ls2, 3 => XivChatType.Ls3, 4 => XivChatType.Ls4,
+                5 => XivChatType.Ls5, 6 => XivChatType.Ls6, 7 => XivChatType.Ls7, _ => XivChatType.Ls8,
+            },
+            ChatChannelKind.CrossWorldLinkshell => target.Index switch
+            {
+                1 => XivChatType.CrossLinkShell1, 2 => XivChatType.CrossLinkShell2, 3 => XivChatType.CrossLinkShell3,
+                4 => XivChatType.CrossLinkShell4, 5 => XivChatType.CrossLinkShell5, 6 => XivChatType.CrossLinkShell6,
+                7 => XivChatType.CrossLinkShell7, _ => XivChatType.CrossLinkShell8,
+            },
+            ChatChannelKind.Tell => XivChatType.TellOutgoing,
+            ChatChannelKind.Echo => XivChatType.Echo,
+            _ => XivChatType.Debug,
+        };
 
         private unsafe void SendToChannel(string message, string? channel)
         {
