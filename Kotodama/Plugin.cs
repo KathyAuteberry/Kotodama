@@ -156,7 +156,7 @@ namespace EchoXIV
                 _incomingMessageHandler.OnTranslationStarted += OnTranslationStarted;
                 _incomingMessageHandler.OnMessageTranslated += OnMessageTranslated;
                 _incomingMessageHandler.OnOutgoingMessage += OnOutgoingMessage;
-                _incomingMessageHandler.OnRequestEngineFailover += SwitchToGoogleFailover;
+                _incomingMessageHandler.OnRequestEngineFailover += HandleEngineFailure;
                 
                 // Initialize native hook (outgoing translation)
                 try
@@ -171,7 +171,7 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
                          PluginLog,
                          ClientState,
                          GameInteropProvider,
-                         SwitchToGoogleFailover
+                         HandleEngineFailure
                      );
                     _chatBoxHook.Enable();
                 }
@@ -429,7 +429,7 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
                 _incomingMessageHandler.OnTranslationStarted -= OnTranslationStarted;
                 _incomingMessageHandler.OnMessageTranslated -= OnMessageTranslated;
                 _incomingMessageHandler.OnOutgoingMessage -= OnOutgoingMessage;
-                _incomingMessageHandler.OnRequestEngineFailover -= SwitchToGoogleFailover;
+                _incomingMessageHandler.OnRequestEngineFailover -= HandleEngineFailure;
             }
             
             _translationCache.Dispose();
@@ -804,13 +804,17 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
                         return;
                     }
 
-                    PluginLog.Warning($"{ex.Message}. Enabling automatic failover to Google (one retry only)...");
+                    PluginLog.Warning($"{ex.Message}. Checking whether the fallback policy allows switching engines...");
                     _ = Framework.RunOnFrameworkThread(() =>
                     {
                         if (_shutdownCts.IsCancellationRequested)
                             return;
-                        SwitchToGoogleFailover();
-                        TranslateAndSend(input, allowFailoverRetry: false);
+                        // Retry only when the policy actually switched engines; otherwise the retry
+                        // would hit the same failed engine.
+                        if (TrySwitchEngineAfterFailure())
+                            TranslateAndSend(input, allowFailoverRetry: false);
+                        else
+                            SendOriginalAfterTranslationFailure(input);
                     });
                 }
                 catch (Exception ex)
@@ -1147,7 +1151,8 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
                 selection.Primary?.Id ?? Guid.Empty,
                 ordered,
                 _configuration.EngineRecoveryCheckMinutes,
-                PluginLog);
+                PluginLog,
+                _shutdownCts.Token);
 
             if (_configuration.VerboseLogging)
                 PluginLog.Info($"Translation engine active: {_configuration.PrimaryInstanceName}");
@@ -1195,39 +1200,50 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
                 "Translation is off: no translation engine is enabled. Enable one in /kotodama → Engines."),
         };
 
-        private void SwitchToGoogleFailover()
+        /// <summary>
+        /// Called from the hook and the incoming handler (worker threads) after an engine failure.
+        /// All configuration changes happen on the framework thread.
+        /// </summary>
+        private void HandleEngineFailure()
         {
-            // TranslationRouter handles failover internally without changing the primary
-            // engine. This method only notifies and remains as legacy backup for LocalAI.
+            _ = Framework.RunOnFrameworkThread(() =>
+            {
+                if (!_shutdownCts.IsCancellationRequested)
+                    TrySwitchEngineAfterFailure();
+            });
+        }
+
+        /// <summary>
+        /// Persistently switches the primary engine after a failure, if the fallback policy allows
+        /// it (only Any, only to an existing enabled Google instance, never re-enabling anything).
+        /// Must run on the framework thread. Returns true when the primary engine changed.
+        /// </summary>
+        private bool TrySwitchEngineAfterFailure()
+        {
+            var target = FailoverDecision.ChooseFailoverTarget(
+                _configuration.FallbackPolicy, _configuration.Engines, _configuration.PrimaryEngineId);
+            if (target == null)
+            {
+                PluginLog.Warning($"Primary engine failed; fallback policy {_configuration.FallbackPolicy} keeps the engine configuration unchanged.");
+                return false;
+            }
+
             var wasLocalAi = _configuration.SelectedEngine == TranslationEngine.LocalAI;
             PluginLog.Warning(wasLocalAi
                 ? "Local AI server is not responding. Switching automatically to Google Translate."
                 : "Primary engine reached its limit. Switching automatically to Google Translate.");
 
-            // Failover must actually switch engines or retries hit the same dead LocalAI.
-            if (_configuration.SelectedEngine != TranslationEngine.Google)
-            {
-                // Only switch to an EXISTING Google instance; never re-add deleted engines.
-                var google = _configuration.Engines.FirstOrDefault(e => e.Type == TranslationEngine.Google);
-                if (google != null)
-                {
-                    google.Enabled = true;
-                    _configuration.PrimaryEngineId = google.Id;
-                    _configuration.LocalAiUnavailable = wasLocalAi;
-                    _configuration.Save();
-                    UpdateTranslationService();
-                }
-            }
+            _configuration.PrimaryEngineId = target.Value;
+            _configuration.LocalAiUnavailable = wasLocalAi;
+            _configuration.Save();
+            UpdateTranslationService();
 
-            // Notify the user via game chat
             var messageKey = wasLocalAi ? "Command_LocalAiFailoverToGoogle" : "Command_FailoverToGoogle";
             var fallbackMessage = wasLocalAi
                 ? "Local AI server is not responding. Switching automatically to Google Translate."
                 : "Primary engine limit reached. Switching automatically to Google Translate.";
-            _ = Framework.RunOnFrameworkThread(() => 
-            {
-                ChatGui.Print(GetResourceText(messageKey, fallbackMessage));
-            });
+            ChatGui.Print(GetResourceText(messageKey, fallbackMessage));
+            return true;
         }
 
         private static string GetResourceText(string key, string fallback)
@@ -1239,8 +1255,15 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
         {
             _chatVisible = UpdateChatVisibilityInternal();
 
-            // Periodically re-check Local AI availability for auto-recovery
-            if (_configuration.LocalAiUnavailable)
+            // Periodically re-check Local AI availability for auto-recovery. This only undoes an
+            // automatic switch, which only the Any policy makes; under local policies a stale flag
+            // is cleared instead.
+            if (_configuration.LocalAiUnavailable && !FailoverDecision.ShouldRunLocalAiRecovery(_configuration.FallbackPolicy, true))
+            {
+                _configuration.LocalAiUnavailable = false;
+                _configuration.Save();
+            }
+            else if (FailoverDecision.ShouldRunLocalAiRecovery(_configuration.FallbackPolicy, _configuration.LocalAiUnavailable))
             {
                 var now = Environment.TickCount64;
                 var recoveryIntervalMs = Math.Max(1, _configuration.EngineRecoveryCheckMinutes) * 60_000L;
@@ -1271,21 +1294,26 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
 
             try
             {
-var available = await _localAiTranslator.IsAvailableAsync(_shutdownCts.Token);
+                var available = await _localAiTranslator.IsAvailableAsync(_shutdownCts.Token);
                 if (available)
                 {
-                    // Restore the Local AI instance as primary if one exists.
-                    var localAi = _configuration.Engines.FirstOrDefault(e => e.Type == TranslationEngine.LocalAI && e.Enabled);
-                    if (localAi != null)
+                    // Config and engine rebuilds happen on the framework thread only.
+                    await Framework.RunOnFrameworkThread(() =>
                     {
-                        _configuration.PrimaryEngineId = localAi.Id;
-                    }
-                    _configuration.LocalAiUnavailable = false;
-                    _configuration.Save();
-                    UpdateTranslationService();
-                    PluginLog.Info("Local AI server is back online. Restoring Local AI engine.");
-                    _ = Framework.RunOnFrameworkThread(() =>
-                    {
+                        if (_shutdownCts.IsCancellationRequested ||
+                            !FailoverDecision.ShouldRunLocalAiRecovery(_configuration.FallbackPolicy, _configuration.LocalAiUnavailable))
+                            return;
+
+                        // Restore the Local AI instance as primary if one exists.
+                        var localAi = _configuration.Engines.FirstOrDefault(e => e.Type == TranslationEngine.LocalAI && e.Enabled);
+                        if (localAi != null)
+                        {
+                            _configuration.PrimaryEngineId = localAi.Id;
+                        }
+                        _configuration.LocalAiUnavailable = false;
+                        _configuration.Save();
+                        UpdateTranslationService();
+                        PluginLog.Info("Local AI server is back online. Restoring Local AI engine.");
                         ChatGui.Print(GetResourceText("Command_LocalAiRestored", "Local AI server is back online. Restored Local AI engine."));
                     });
                 }

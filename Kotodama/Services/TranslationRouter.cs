@@ -21,6 +21,7 @@ public class TranslationRouter : ITranslationService, ICombinedTranslator
     private readonly List<(Guid Id, ITranslationService Translator, string DisplayName)> _engines;
     private readonly TimeSpan _recoveryInterval;
     private readonly IPluginLog? _log;
+    private readonly CancellationToken _lifetime;
 
     private readonly object _gate = new();
     private readonly HashSet<Guid> _sick = new();
@@ -112,12 +113,14 @@ public class TranslationRouter : ITranslationService, ICombinedTranslator
         Guid primaryId,
         IReadOnlyList<(Guid Id, ITranslationService Translator, string DisplayName)> engines,
         int recoveryCheckMinutes = 10,
-        IPluginLog? log = null)
+        IPluginLog? log = null,
+        CancellationToken lifetime = default)
     {
         _primaryId = primaryId;
         _engines = engines.ToList();
         _recoveryInterval = TimeSpan.FromMinutes(Math.Max(1, recoveryCheckMinutes));
         _log = log;
+        _lifetime = lifetime;
     }
 
     // Legacy ctor for callers that still pass a dictionary keyed by engine type.
@@ -260,9 +263,14 @@ public class TranslationRouter : ITranslationService, ICombinedTranslator
         if (entry.Translator == null)
             return;
 
+        if (_lifetime.IsCancellationRequested)
+            return;
+
         try
         {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            // Linked to plugin lifetime so probes stop on unload.
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetime);
+            cts.CancelAfter(TimeSpan.FromSeconds(5));
             var result = await entry.Translator.TranslateAsync("hi", "auto", "en", cts.Token);
             if (result is not null)
             {
