@@ -17,6 +17,13 @@ namespace EchoXIV
         public static string Variant(TranslationEngine engine, string? model) =>
             $"{engine}:{(model ?? string.Empty).Trim()}:p{PromptVersion}";
 
+        /// <summary>
+        /// Variant for engines that use a translation profile (PLaMo): editing or switching the
+        /// profile changes the key, so stale translations are never served.
+        /// </summary>
+        public static string Variant(TranslationEngine engine, string? model, string profileName, string profileHash) =>
+            $"{Variant(engine, model)}:{profileName}:{profileHash}";
+
         /// <summary>Length-prefixed so no combination of fields can collide with another.</summary>
         public static string Build(string variant, string text, string sourceLang, string targetLang) =>
             $"{KeyPrefix}{variant.Length}:{variant}|{text.Length}:{text}{sourceLang.Length}:{sourceLang}{targetLang.Length}:{targetLang}";

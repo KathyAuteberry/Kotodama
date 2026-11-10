@@ -180,6 +180,9 @@ namespace EchoXIV
         /// </summary>
         public FallbackPolicy FallbackPolicy { get; set; } = FallbackPolicy.None;
 
+        /// <summary>Active translation profile (folder name under profiles/), e.g. Raid or Casual.</summary>
+        public string ActiveProfile { get; set; } = "Raid";
+
         public bool VerboseLogging { get; set; } = false;
         public bool OverlayVisible { get; set; } = true;
 
@@ -359,6 +362,12 @@ namespace EchoXIV
             if (InactivityHideTimeout < 10 || InactivityHideTimeout > 600)
             {
                 InactivityHideTimeout = 60;
+                changed = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(ActiveProfile))
+            {
+                ActiveProfile = "Raid";
                 changed = true;
             }
 

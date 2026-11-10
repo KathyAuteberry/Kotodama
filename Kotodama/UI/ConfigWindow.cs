@@ -45,6 +45,14 @@ public class ConfigWindow : Window, IDisposable
     private Task<PlamoTestResult>? _plamoTest;
     private Guid _plamoTestInstanceId;
 
+    /// <summary>Loaded translation profiles (set by the plugin).</summary>
+    public Func<IReadOnlyList<EchoXIV.Profiles.TranslationProfile>>? ProfilesProvider { get; init; }
+
+    /// <summary>Where profile folders live, shown so users can edit them outside the game.</summary>
+    public string ProfilesFolder { get; init; } = string.Empty;
+
+    public event Action? OnProfilesReloadRequested;
+
     public ConfigWindow(Configuration configuration, MessageHistoryManager historyManager) 
         : base($"{Resources.PluginName} - {Resources.ConfigWindow_Title}###KotodamaConfigWindow")
     {
@@ -219,6 +227,12 @@ public class ConfigWindow : Window, IDisposable
             ImGui.Spacing();
 
             DrawOutgoingModeSelector();
+
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            DrawProfileSelector();
 
             ImGui.Spacing();
             ImGui.Separator();
@@ -656,6 +670,53 @@ public class ConfigWindow : Window, IDisposable
         }
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(Text("Outgoing_TimeoutTip", "Messages are sent in order, so later lines wait for a slow translation. Keep this short."));
+    }
+
+    private void DrawProfileSelector()
+    {
+        var profiles = ProfilesProvider?.Invoke() ?? Array.Empty<EchoXIV.Profiles.TranslationProfile>();
+        var active = profiles.FirstOrDefault(p => string.Equals(p.Name, _configuration.ActiveProfile, StringComparison.OrdinalIgnoreCase));
+
+        ImGui.Text(Text("Profile_Label", "Translation profile"));
+        ImGui.SetNextItemWidth(200);
+        using (var combo = ImRaii.Combo("##ActiveProfile", active?.Name ?? $"{_configuration.ActiveProfile} (missing)"))
+        {
+            if (combo)
+            {
+                foreach (var profile in profiles)
+                {
+                    if (ImGui.Selectable(profile.Name, profile == active))
+                    {
+                        _configuration.ActiveProfile = profile.Name;
+                        // The profile is part of PLaMo's cache key: rebuild engines.
+                        SaveEnginesChanged();
+                    }
+                }
+            }
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button(Text("Profile_Reload", "Reload") + "##ReloadProfiles"))
+            OnProfilesReloadRequested?.Invoke();
+
+        if (active != null)
+        {
+            ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1f),
+                string.Format(Text("Profile_Summary", "{0} glossary entries. Used by PLaMo for context and terminology."), active.Glossary.Count));
+            if (active.Warnings.Count > 0)
+            {
+                ImGui.TextColored(new Vector4(1f, 0.7f, 0.3f, 1f),
+                    string.Format(Text("Profile_Warnings", "{0} glossary line(s) ignored:"), active.Warnings.Count));
+                foreach (var warning in active.Warnings.Take(5))
+                    ImGui.TextWrapped("  " + warning);
+            }
+        }
+
+        if (!string.IsNullOrEmpty(ProfilesFolder))
+        {
+            ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1f), Text("Profile_Folder", "Edit the files in:"));
+            ImGui.TextWrapped(ProfilesFolder);
+        }
     }
 
     private static readonly FallbackPolicy[] FallbackPolicies = { FallbackPolicy.None, FallbackPolicy.LocalOnly, FallbackPolicy.Any };

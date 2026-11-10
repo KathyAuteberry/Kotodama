@@ -816,6 +816,11 @@
     <data name="Plamo_NumPredict"><value>Maximum output tokens</value></data>
     <data name="Plamo_TestConnection"><value>Test connection</value></data>
     <data name="Plamo_Testing"><value>Testing…</value></data>
+    <data name="Profile_Label"><value>Translation profile</value></data>
+    <data name="Profile_Reload"><value>Reload</value></data>
+    <data name="Profile_Summary"><value>{0} glossary entries. Used by PLaMo for context and terminology.</value></data>
+    <data name="Profile_Warnings"><value>{0} glossary line(s) ignored:</value></data>
+    <data name="Profile_Folder"><value>Edit the files in:</value></data>
 </root>
 
 

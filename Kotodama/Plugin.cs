@@ -59,6 +59,9 @@ namespace EchoXIV
         private readonly Plamo.PlamoClient _plamoClient = new();
         private string? _lastPlamoWarmUpKey;
         private string _profilesRoot = string.Empty;
+        private Profiles.ProfileStore _profileStore = new(string.Empty);
+        private FileSystemWatcher? _profileWatcher;
+        private Timer? _profileReloadTimer;
         // Fallback translator for the incoming/outgoing failover paths. Comes only from
         // EngineSelection (never a hardcoded cloud engine); null when the policy allows no fallback.
         private ITranslationService? _secondaryTranslator;
@@ -113,6 +116,9 @@ namespace EchoXIV
                     PluginLog.Info($"Created default profile file {created}");
                 foreach (var error in install.Errors)
                     PluginLog.Warning($"Could not install default profile file: {error}");
+                _profileStore = new Profiles.ProfileStore(_profilesRoot);
+                LogProfileWarnings(_profileStore.Reload());
+                StartProfileWatcher();
 
                 _showWelcomeWindow = _configuration.FirstRun;
                 if (_showWelcomeWindow)
@@ -223,7 +229,7 @@ namespace EchoXIV
 
                 CommandManager.AddHandler(ConfigCommandName, new CommandInfo(OnConfigCommand)
                 {
-                    HelpMessage = "Kotodama settings: /kotodama [mode off|explicit|auto | chat | reset | help]"
+                    HelpMessage = "Kotodama settings: /kotodama [mode off|explicit|auto | profile <name> | reload | chat | reset | help]"
                 });
                 
                 // Register main UI callback ("Open" opens config)
@@ -249,7 +255,12 @@ namespace EchoXIV
 
         private ConfigWindow CreateConfigWindow()
         {
-            var configWindow = new ConfigWindow(_configuration, _historyManager);
+            var configWindow = new ConfigWindow(_configuration, _historyManager)
+            {
+                ProfilesProvider = () => _profileStore.Profiles,
+                ProfilesFolder = _profilesRoot,
+            };
+            configWindow.OnProfilesReloadRequested += () => ReloadProfiles(announce: true);
             configWindow.OnTranslationEngineChanged += OnTranslationEngineChangedHandler;
             configWindow.OnUiLanguageChanged += OnUiLanguageChangedHandler;
             _windowSystem.AddWindow(configWindow);
@@ -430,6 +441,8 @@ namespace EchoXIV
             }
             _instanceServices.Clear();
             _plamoClient.Dispose();
+            _profileWatcher?.Dispose();
+            _profileReloadTimer?.Dispose();
 
             // Remove windows
             _windowSystem?.RemoveAllWindows();
@@ -632,6 +645,14 @@ namespace EchoXIV
                     ToggleTranslatedChatWindow();
                     break;
 
+                case "profile":
+                    SetActiveProfileCommand(parts.Length > 1 ? string.Join(' ', parts.Skip(1)) : string.Empty);
+                    break;
+
+                case "reload":
+                    ReloadProfiles(announce: true);
+                    break;
+
                 case "reset":
                     ResetTranslatedChatWindowPosition();
                     break;
@@ -643,6 +664,8 @@ namespace EchoXIV
                     ChatGui.Print("/tl /p <message>, /tl /fc …, /tl /t First Last@World … - translate and send to that channel.");
                     ChatGui.Print("/kotodama - open settings.");
                     ChatGui.Print("/kotodama mode off|explicit|auto - outgoing translation mode.");
+                    ChatGui.Print("/kotodama profile [name] - show or switch the translation profile (Raid, Casual, …).");
+                    ChatGui.Print("/kotodama reload - reload profile files after editing them.");
                     ChatGui.Print("/kotodama chat - show or hide the translated chat window.");
                     ChatGui.Print("/kotodama reset - reset the translated chat window position.");
                     break;
@@ -864,10 +887,18 @@ namespace EchoXIV
             foreach (var instance in selection.Engines)
             {
                 // Local AI reads its model from the global setting; other engines from the instance.
-                cacheVariants[instance.Id] = CacheKey.Variant(
-                    instance.Type,
-                    instance.Type == TranslationEngine.LocalAI ? _configuration.LocalAiModel : instance.Model);
-                // (PLaMo: instance.Model; profile data joins the variant in P4.)
+                if (instance.Type == TranslationEngine.Plamo)
+                {
+                    // The profile shapes PLaMo's output: switching or editing it changes the key.
+                    var profile = _profileStore.Get(_configuration.ActiveProfile);
+                    cacheVariants[instance.Id] = CacheKey.Variant(instance.Type, instance.Model, profile.Name, profile.ContentHash);
+                }
+                else
+                {
+                    cacheVariants[instance.Id] = CacheKey.Variant(
+                        instance.Type,
+                        instance.Type == TranslationEngine.LocalAI ? _configuration.LocalAiModel : instance.Model);
+                }
 
                 ITranslationService svc;
                 switch (instance.Type)
@@ -897,7 +928,7 @@ namespace EchoXIV
                     case TranslationEngine.Plamo:
                     {
                         var plamoInstance = instance;
-                        svc = new PlamoTranslatorService(_plamoClient, () => PlamoSettingsFor(plamoInstance));
+                        svc = new PlamoTranslatorService(_plamoClient, () => PlamoSettingsFor(plamoInstance), PlamoExtrasFor);
                         _instanceServices.Add(svc);
                         break;
                     }
@@ -974,6 +1005,119 @@ namespace EchoXIV
             _lastPlamoWarmUpKey = key;
             var token = _shutdownCts.Token;
             _ = Task.Run(() => PlamoConnectionTest.WarmUpAsync(_plamoClient, settings, token), token);
+        }
+
+        /// <summary>Active profile's context and matching glossary terms for one PLaMo request (worker thread).</summary>
+        private PlamoPromptExtras PlamoExtrasFor(Plamo.TranslationDirection direction, string text)
+        {
+            var prompt = Profiles.ProfileStore.PromptFor(_profileStore.Get(_configuration.ActiveProfile), direction, text);
+            return new PlamoPromptExtras(prompt.Context, prompt.Glossary, null);
+        }
+
+        private void StartProfileWatcher()
+        {
+            try
+            {
+                Directory.CreateDirectory(_profilesRoot);
+                _profileReloadTimer = new Timer(_ => ReloadProfiles(announce: false), null, Timeout.Infinite, Timeout.Infinite);
+                _profileWatcher = new FileSystemWatcher(_profilesRoot)
+                {
+                    IncludeSubdirectories = true,
+                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Size,
+                };
+                FileSystemEventHandler changed = (_, e) => OnProfileFileChanged(e.FullPath);
+                _profileWatcher.Changed += changed;
+                _profileWatcher.Created += changed;
+                _profileWatcher.Deleted += changed;
+                _profileWatcher.Renamed += (_, e) => OnProfileFileChanged(e.FullPath);
+                _profileWatcher.EnableRaisingEvents = true;
+            }
+            catch (Exception ex)
+            {
+                // Watching is a convenience; /kotodama reload still works.
+                PluginLog.Warning(ex, "Could not watch the profiles folder for changes.");
+            }
+        }
+
+        private void OnProfileFileChanged(string path)
+        {
+            if (path.Contains(Path.DirectorySeparatorChar + Profiles.ProfileInstaller.DefaultsDirectoryName, StringComparison.Ordinal))
+                return;
+
+            // Debounce: editors write files in several steps.
+            _profileReloadTimer?.Change(500, Timeout.Infinite);
+        }
+
+        /// <summary>Reloads profile files off the framework thread, then rebuilds engines on it.</summary>
+        private void ReloadProfiles(bool announce)
+        {
+            if (_shutdownCts.IsCancellationRequested)
+                return;
+
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    var profiles = _profileStore.Reload();
+                    LogProfileWarnings(profiles);
+                    _ = Framework.RunOnFrameworkThread(() =>
+                    {
+                        if (_shutdownCts.IsCancellationRequested)
+                            return;
+                        UpdateTranslationService();
+                        var active = _profileStore.Get(_configuration.ActiveProfile);
+                        if (announce)
+                            ChatGui.Print($"[Kotodama] Profiles reloaded: {string.Join(", ", profiles.Select(p => p.Name))}. Active: {DescribeProfile(active)}.");
+                        if (active.Warnings.Count > 0)
+                            ChatGui.PrintError($"[Kotodama] Profile {active.Name}: {active.Warnings.Count} glossary line(s) ignored. See /xllog.");
+                    });
+                }
+                catch (Exception ex)
+                {
+                    PluginLog.Error(ex, "Could not reload translation profiles.");
+                }
+            });
+        }
+
+        private void LogProfileWarnings(IReadOnlyList<Profiles.TranslationProfile> profiles)
+        {
+            foreach (var profile in profiles)
+            {
+                foreach (var warning in profile.Warnings)
+                    PluginLog.Warning($"Profile {profile.Name}: {warning}");
+            }
+        }
+
+        private string DescribeProfile(Profiles.TranslationProfile profile) =>
+            ReferenceEquals(profile, Profiles.TranslationProfile.Empty)
+                ? $"{_configuration.ActiveProfile} (not found, no profile used)"
+                : $"{profile.Name} ({profile.Glossary.Count} glossary entries)";
+
+        private void SetActiveProfileCommand(string name)
+        {
+            var profiles = _profileStore.Profiles;
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                ChatGui.Print($"[Kotodama] Active profile: {DescribeProfile(_profileStore.Get(_configuration.ActiveProfile))}. Available: {string.Join(", ", profiles.Select(p => p.Name))}. Folder: {_profilesRoot}");
+                return;
+            }
+
+            var match = profiles.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (match == null)
+            {
+                ChatGui.PrintError($"[Kotodama] No profile named '{name}'. Available: {string.Join(", ", profiles.Select(p => p.Name))}.");
+                return;
+            }
+
+            SetActiveProfile(match.Name);
+            ChatGui.Print($"[Kotodama] Active profile: {DescribeProfile(match)}.");
+        }
+
+        private void SetActiveProfile(string name)
+        {
+            _configuration.ActiveProfile = name;
+            _configuration.Save();
+            UpdateTranslationService();
         }
 
         internal static Plamo.PlamoSettings PlamoSettingsFor(EngineInstance instance) => new(

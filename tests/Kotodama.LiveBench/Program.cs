@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using EchoXIV.Plamo;
+using EchoXIV.Profiles;
 using EchoXIV.Services;
 using Kotodama.Tests.Fixtures;
 
@@ -15,7 +16,19 @@ var outDir = options.OutputDir ?? Path.Combine(BenchFixtures.RepoRoot, "bench", 
 var settings = new PlamoSettings(options.Url, options.Model, "30m", 0f, PlamoSettings.DefaultNumPredict, TimeSpan.FromSeconds(options.TimeoutSeconds));
 
 using var client = new PlamoClient();
-var service = new PlamoTranslatorService(client, () => settings);
+
+// "plain" = no profile; any other name is loaded from --profile-dir (default: the shipped defaults).
+var profileStore = new ProfileStore(options.ProfileDir ?? Path.Combine(BenchFixtures.RepoRoot, "Kotodama", "Profiles", "Defaults"));
+profileStore.Reload();
+var runProfiles = options.Profiles.Select(name => name == "plain" ? (Name: "plain", Profile: (TranslationProfile?)null) : (Name: name, Profile: profileStore.Get(name))).ToList();
+foreach (var (name, profile) in runProfiles)
+{
+    if (profile != null && ReferenceEquals(profile, TranslationProfile.Empty))
+    {
+        Console.Error.WriteLine($"Profile '{name}' not found in {profileStore.Root}");
+        return 2;
+    }
+}
 
 var cases = new List<(string Id, string Direction, string Source, string Reference, string Note)>();
 if (options.Set is "all" or "bench")
@@ -40,9 +53,17 @@ if (options.WarmUp)
 
 var rows = new List<ReviewRow>();
 var index = 0;
+foreach (var (profileName, profile) in runProfiles)
 foreach (var c in cases)
 {
     var target = c.Direction == "jp-en" ? "en" : "ja";
+    var service = new PlamoTranslatorService(client, () => settings, profile == null
+        ? null
+        : (direction, text) =>
+        {
+            var prompt = ProfileStore.PromptFor(profile, direction, text);
+            return new PlamoPromptExtras(prompt.Context, prompt.Glossary, null);
+        });
     for (var run = 1; run <= options.Runs; run++)
     {
         index++;
@@ -66,20 +87,22 @@ foreach (var c in cases)
             tokens = 0;
         }
 
-        rows.Add(new ReviewRow(c.Id, c.Direction, "plain", run, c.Source, c.Reference, c.Note, options.Model, output, ok, latency, tokens));
+        rows.Add(new ReviewRow(c.Id, c.Direction, profileName, run, c.Source, c.Reference, c.Note, options.Model, output, ok, latency, tokens));
         if (!options.Quiet)
-            Console.WriteLine($"[{index,3}] {c.Id,-5} {c.Direction} #{run} {latency,7:0.0}ms | {output.Replace('\n', ' ')}");
+            Console.WriteLine($"[{index,3}] {c.Id,-5} {c.Direction} {profileName,-6} #{run} {latency,7:0.0}ms | {output.Replace('\n', ' ')}");
     }
 }
 
 ReviewCsv.Write(outDir, rows);
 
-var okRows = rows.Where(r => r.Ok).Select(r => r.LatencyMs).OrderBy(x => x).ToList();
 Console.WriteLine();
-Console.WriteLine($"Successful: {okRows.Count}/{rows.Count}");
-if (okRows.Count > 0)
+foreach (var group in rows.GroupBy(r => r.Profile))
 {
-    Console.WriteLine($"Latency avg {okRows.Average():0} ms, median {okRows[okRows.Count / 2]:0} ms, p95 {okRows[(int)Math.Ceiling((okRows.Count - 1) * 0.95)]:0} ms");
+    var okRows = group.Where(r => r.Ok).Select(r => r.LatencyMs).OrderBy(x => x).ToList();
+    Console.Write($"{group.Key}: successful {okRows.Count}/{group.Count()}");
+    if (okRows.Count > 0)
+        Console.Write($", latency avg {okRows.Average():0} ms, median {okRows[okRows.Count / 2]:0} ms, p95 {okRows[(int)Math.Ceiling((okRows.Count - 1) * 0.95)]:0} ms");
+    Console.WriteLine();
 }
 Console.WriteLine($"Saved {Path.Combine(outDir, "review.csv")} and results.jsonl. Score model_output by hand (0 wrong, 1 usable, 2 correct/natural).");
 return rows.All(r => r.Ok) ? 0 : 1;
@@ -92,7 +115,8 @@ static async Task PlamoWarmUp(PlamoClient client, PlamoSettings settings)
 }
 
 internal sealed record BenchOptions(
-    string Url, string Model, int Runs, int Limit, string Set, string Direction, string? OutputDir, int TimeoutSeconds, bool WarmUp, bool Quiet)
+    string Url, string Model, int Runs, int Limit, string Set, string Direction, string? OutputDir, int TimeoutSeconds, bool WarmUp, bool Quiet,
+    IReadOnlyList<string> Profiles, string? ProfileDir)
 {
     public static BenchOptions? Parse(string[] args)
     {
@@ -102,6 +126,8 @@ internal sealed record BenchOptions(
         string set = "all", direction = "both";
         string? outDir = null;
         bool warmUp = true, quiet = false;
+        var profiles = new List<string>();
+        string? profileDir = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -117,6 +143,8 @@ internal sealed record BenchOptions(
                 case "--out": outDir = Next(); break;
                 case "--timeout": timeout = int.Parse(Next(), CultureInfo.InvariantCulture); break;
                 case "--no-warmup": warmUp = false; break;
+                case "--profile": profiles.Add(Next()); break;
+                case "--profile-dir": profileDir = Next(); break;
                 case "--quiet": quiet = true; break;
                 case "-h":
                 case "--help":
@@ -139,7 +167,10 @@ internal sealed record BenchOptions(
             return null;
         }
 
-        return new BenchOptions(url, model, runs, limit, set, direction, outDir, timeout, warmUp, quiet);
+        if (profiles.Count == 0)
+            profiles.Add("plain");
+
+        return new BenchOptions(url, model, runs, limit, set, direction, outDir, timeout, warmUp, quiet, profiles, profileDir);
     }
 
     private static void PrintHelp() => Console.WriteLine("""
@@ -155,6 +186,8 @@ internal sealed record BenchOptions(
           --limit N            First N cases per direction (0 = all)
           --out DIR            Output directory (default bench/runs/<timestamp>, git-ignored)
           --timeout SECONDS    Per-request timeout (default 90)
+          --profile NAME       plain (no profile) or a profile name; repeat to compare (default: plain)
+          --profile-dir DIR    Where profiles live (default: Kotodama/Profiles/Defaults)
           --no-warmup          Skip loading the model first
           --quiet              No per-case output
 
