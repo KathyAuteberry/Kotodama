@@ -33,8 +33,5 @@ Test*.ps1
 *.zip
 DISTRIBUTION.md
 
-EchoXIV/docs/
-
 scripts/
 
-docs/
