@@ -104,6 +104,21 @@ second loses `/tl`. Unload EchoXIV while testing Kotodama's `/tl`. EchoXIV is no
 - The model has no default `stop` parameters. Every request must pass
   `stop: ["<|plamo:tag|>", "<|plamo:bos|>"]`.
 
+## Live PLaMo benchmark (opt-in)
+
+`tests/Kotodama.LiveBench` runs `bench/cases.tsv` and `bench/regression.tsv` through the plugin's own
+PLaMo request path against a real Ollama server. It writes `review.csv` (the same columns as the earlier
+benchmark) and `results.jsonl` to `bench/runs/<timestamp>/`, which is git-ignored. It never scores
+quality; score `model_output` by hand.
+
+```bash
+KOTODAMA_OLLAMA_URL=http://10.1.0.103:11434 dotnet run --project tests/Kotodama.LiveBench -c Debug
+```
+
+Options: `--set bench|regression`, `--direction jp-en|en-jp`, `--runs N`, `--limit N`, `--out DIR`,
+`--model M`, `--no-warmup`, `--quiet` (see `--help`). With `KOTODAMA_OLLAMA_URL` set, `dotnet test` also
+runs a two-request live smoke test; without it, that test does nothing, so CI never needs a server.
+
 ## Troubleshooting
 
 - `Dalamud installation not found at …`: `~/.xlcore/dalamud/Hooks/dev/` is missing. Start the game

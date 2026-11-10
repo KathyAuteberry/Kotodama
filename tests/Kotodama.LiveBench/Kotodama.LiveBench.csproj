@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Opt-in live benchmark against a real Ollama server. Not a test project: `dotnet test` never runs
+    it and CI never needs a server. Uses exactly the plugin's PLaMo request path (linked sources).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../../Kotodama/Core/**/*.cs" Link="Core/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="../../Kotodama/Services/ITranslationService.cs" Link="Services/ITranslationService.cs" />
+    <Compile Include="../../Kotodama/Services/PlamoTranslatorService.cs" Link="Services/PlamoTranslatorService.cs" />
+    <Compile Include="../Kotodama.Tests/Fixtures/BenchFixtures.cs" Link="Fixtures/BenchFixtures.cs" />
+    <Compile Include="../Kotodama.Tests/Fixtures/ReviewCsv.cs" Link="Fixtures/ReviewCsv.cs" />
+  </ItemGroup>
+
+</Project>

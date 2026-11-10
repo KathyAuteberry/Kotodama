@@ -35,3 +35,6 @@ DISTRIBUTION.md
 
 scripts/
 
+
+# Live benchmark runs (tests/Kotodama.LiveBench)
+bench/runs/
