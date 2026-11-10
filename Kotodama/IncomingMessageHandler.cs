@@ -29,6 +29,19 @@ public class TranslatedChatMessage
 
         /// <summary>True when every allowed engine failed and the original text is shown instead.</summary>
         public bool TranslationFailed { get; set; }
+
+        /// <summary>
+        /// The part of an incoming line sent to the engine: the text without auto-translate phrases.
+        /// Null means the whole <see cref="OriginalText"/>.
+        /// </summary>
+        public string? TranslatableText { get; set; }
+
+        /// <summary>Auto-translate phrases, shown verbatim in front of the translation (never sent to the engine).</summary>
+        public List<string> AutoTranslatePhrases { get; set; } = new();
+
+        public string GetSourceForTranslation() => TranslatableText ?? OriginalText;
+
+        public string ComposeTranslation(string translation) => AutoTranslateText.Compose(AutoTranslatePhrases, translation);
         public Guid Id { get; set; } = Guid.NewGuid();
 
         // Romanization fields
@@ -344,9 +357,49 @@ public class TranslatedChatMessage
                 IsTranslating = true
             };
 
+            // Auto-translate phrases already show in the reader's language: keep them out of the
+            // engine, and don't translate lines made only of them.
+            var incomingText = SplitAutoTranslate(message.Message);
+            if (incomingText.Phrases.Count > 0)
+            {
+                translatedMessage.TranslatableText = incomingText.Translatable;
+                translatedMessage.AutoTranslatePhrases = incomingText.Phrases.ToList();
+            }
+
+            if (incomingText.OnlyAutoTranslate)
+            {
+                translatedMessage.TranslatedText = translatedMessage.ComposeTranslation(string.Empty);
+                translatedMessage.IsTranslating = false;
+                OnTranslationStarted?.Invoke(translatedMessage);
+                lock (_inflightTranslations)
+                {
+                    _inflightTranslations.Remove(dedupKey);
+                }
+                return;
+            }
+
             OnTranslationStarted?.Invoke(translatedMessage);
 
             _ = TranslateAsync(translatedMessage, dedupKey);
+        }
+
+        private static IncomingText SplitAutoTranslate(SeString message)
+        {
+            var segments = new List<ChatSegment>();
+            foreach (var payload in message.Payloads)
+            {
+                switch (payload)
+                {
+                    case Dalamud.Game.Text.SeStringHandling.Payloads.AutoTranslatePayload autoTranslate:
+                        segments.Add(new ChatSegment(true, autoTranslate.Text ?? string.Empty));
+                        break;
+                    case Dalamud.Game.Text.SeStringHandling.Payloads.TextPayload text:
+                        segments.Add(new ChatSegment(false, text.Text ?? string.Empty));
+                        break;
+                }
+            }
+
+            return AutoTranslateText.Split(segments);
         }
 
         public async Task ProcessMessageAsync(TranslatedChatMessage message)
@@ -369,12 +422,13 @@ public class TranslatedChatMessage
                 slotAcquired = true;
 
                 var targetLanguage = _configuration.GetReadingLanguage();
-                var detectedLanguage = LanguageDetector.Detect(message.OriginalText);
+                var source = message.GetSourceForTranslation();
+                var detectedLanguage = LanguageDetector.Detect(source);
                 if (_configuration.SkipSameLanguageTranslation &&
                     detectedLanguage.IsConfident(_configuration.LanguageDetectionConfidence) &&
                     LanguageDetector.IsSameLanguage(detectedLanguage.Code, targetLanguage))
                 {
-                    message.TranslatedText = message.OriginalText;
+                    message.TranslatedText = message.ComposeTranslation(source);
                     await ApplyRomanizationAsync(message, CancellationToken.None, detectedLanguageCode: detectedLanguage.Code);
                     message.IsTranslating = false;
                     if (_configuration.VerboseLogging)
@@ -389,13 +443,13 @@ public class TranslatedChatMessage
 
                 if (lookupVariant != null && _translationCache.TryGetWithRomanization(
                         lookupVariant,
-                        message.OriginalText,
+                        source,
                         "auto",
                         targetLanguage,
                         out var cached,
                         out var cachedRomanized))
                 {
-                    message.TranslatedText = cached!;
+                    message.TranslatedText = message.ComposeTranslation(cached!);
                     message.RomanizedText = cachedRomanized;
                     await ApplyRomanizationAsync(
                         message,
@@ -405,10 +459,10 @@ public class TranslatedChatMessage
                     {
                         _translationCache.Add(
                             lookupVariant,
-                            message.OriginalText,
+                            source,
                             "auto",
                             targetLanguage,
-                            message.TranslatedText,
+                            cached!,
                             message.RomanizedText);
                     }
                     message.IsTranslating = false;
@@ -418,7 +472,7 @@ public class TranslatedChatMessage
                 }
 
                 // 2. Protect glossary terms
-                var glossary = _glossaryService.Protect(message.OriginalText);
+                var glossary = _glossaryService.Protect(source);
                 var protectedText = glossary.Text;
                 
                 // 3. Translate
@@ -428,7 +482,7 @@ public class TranslatedChatMessage
                 // Variant of the engine that actually answered; null means "do not cache".
                 string? cacheVariant = null;
 
-                var sourceScript = NonLatinScriptDetector.Detect(message.OriginalText);
+                var sourceScript = NonLatinScriptDetector.Detect(source);
                 var sourceLanguageCode = sourceScript.ToLanguageCode();
                 var combinedRomanizationService = RomanizationService as ICombinedTranslator;
                 var canUseCombinedRomanization = combinedRomanizationService != null &&
@@ -474,15 +528,15 @@ public class TranslatedChatMessage
                 // 4. Restore glossary terms and cache
                 var finalTranslation = SanitizeText(glossary.Restore(translation));
                 
-                message.TranslatedText = finalTranslation;
-                
+                message.TranslatedText = message.ComposeTranslation(finalTranslation);
+
                 await ApplyRomanizationAsync(message, primaryTimeout.Token, !combinedRomanization);
 
                 if (cacheVariant != null)
                 {
                     _translationCache.Add(
                         cacheVariant,
-                        message.OriginalText,
+                        source,
                         "auto",
                         targetLanguage,
                         finalTranslation,
@@ -516,12 +570,12 @@ public class TranslatedChatMessage
                 {
                     try
                     {
-                        var secondaryGlossary = _glossaryService.Protect(message.OriginalText);
+                        var secondaryGlossary = _glossaryService.Protect(message.GetSourceForTranslation());
                         var targetLanguage = _configuration.GetReadingLanguage();
                         using var secondaryTimeout = TranslationDefaults.CreateTimeoutTokenSource(_lifetimeCts.Token);
                         var translation = await _secondaryTranslator.TranslateAsync(secondaryGlossary.Text, "auto", targetLanguage, secondaryTimeout.Token);
                         var finalTranslation = SanitizeText(secondaryGlossary.Restore(translation));
-                        message.TranslatedText = finalTranslation;
+                        message.TranslatedText = message.ComposeTranslation(finalTranslation);
                         await ApplyRomanizationAsync(message, secondaryTimeout.Token);
                         message.IsTranslating = false;
                         OnMessageTranslated?.Invoke(message);
@@ -547,14 +601,14 @@ public class TranslatedChatMessage
                 {
                     if (_secondaryTranslator != null)
                     {
-                        var secondaryGlossary = _glossaryService.Protect(message.OriginalText);
+                        var secondaryGlossary = _glossaryService.Protect(message.GetSourceForTranslation());
                         var targetLanguage = _configuration.GetReadingLanguage();
 
                         using var secondaryTimeout = TranslationDefaults.CreateTimeoutTokenSource(_lifetimeCts.Token);
                         var translation = await _secondaryTranslator.TranslateAsync(secondaryGlossary.Text, "auto", targetLanguage, secondaryTimeout.Token);
                         var finalTranslation = SanitizeText(secondaryGlossary.Restore(translation));
                         
-                        message.TranslatedText = finalTranslation;
+                        message.TranslatedText = message.ComposeTranslation(finalTranslation);
                         
                         await ApplyRomanizationAsync(message, secondaryTimeout.Token);
 
