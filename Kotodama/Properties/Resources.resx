@@ -790,6 +790,8 @@
     <data name="Engines_CloudBadge"><value>cloud</value></data>
     <data name="Engines_BlockedCloudPrimary"><value>Translation is off: the primary engine is a cloud service, but the fallback policy only allows local engines. Choose a local primary engine or change the policy in /kotodama → Engines.</value></data>
     <data name="Engines_BlockedNoEngine"><value>Translation is off: no translation engine is enabled. Enable one in /kotodama → Engines.</value></data>
+    <data name="Engines_BlockedNotConfigured"><value>Translation is off: the primary engine has no server URL yet. Enter it in /kotodama → Engines.</value></data>
+    <data name="Welcome_LocalOnly"><value>Kotodama translates with your own local AI server and never uses cloud services unless you allow them. Enter your server URL in /kotodama → Engines.</value></data>
 </root>
 
 

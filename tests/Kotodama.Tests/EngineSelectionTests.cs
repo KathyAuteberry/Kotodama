@@ -151,4 +151,37 @@ public class EngineSelectionTests
     {
         Assert.Equal(expected, EngineSelection.IsLocalOnly(policy));
     }
+
+    [Fact]
+    public void Unconfigured_primary_blocks_translation()
+    {
+        var primary = Engine(TranslationEngine.LocalAI);
+
+        var result = EngineSelection.Select(new[] { primary }, primary.Id, FallbackPolicy.None, _ => false);
+
+        Assert.Empty(result.Engines);
+        Assert.Equal(EngineSelectionBlock.PrimaryNotConfigured, result.BlockedReason);
+    }
+
+    [Fact]
+    public void Unconfigured_fallbacks_are_skipped()
+    {
+        var a = Engine(TranslationEngine.LocalAI, name: "A");
+        var b = Engine(TranslationEngine.LocalAI, name: "B");
+        var c = Engine(TranslationEngine.LocalAI, name: "C");
+
+        var result = EngineSelection.Select(new[] { a, b, c }, a.Id, FallbackPolicy.LocalOnly, e => e != b);
+
+        Assert.Equal(new[] { a, c }, result.Engines);
+    }
+
+    [Fact]
+    public void Cloud_primary_is_reported_before_missing_settings()
+    {
+        var google = Engine(TranslationEngine.Google);
+
+        var result = EngineSelection.Select(new[] { google }, google.Id, FallbackPolicy.None, _ => false);
+
+        Assert.Equal(EngineSelectionBlock.CloudPrimaryNotAllowed, result.BlockedReason);
+    }
 }

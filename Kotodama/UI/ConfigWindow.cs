@@ -593,7 +593,9 @@ public class ConfigWindow : Window, IDisposable
                 Text("Engines_PolicyAnyWarning", "Chat may be sent to cloud services when the primary engine fails."));
         }
 
-        var selection = EngineSelection.Select(_configuration.Engines, _configuration.PrimaryEngineId, _configuration.FallbackPolicy);
+        var selection = EngineSelection.Select(
+            _configuration.Engines, _configuration.PrimaryEngineId, _configuration.FallbackPolicy,
+            e => Plugin.IsEngineConfigured(_configuration, e));
         if (selection.BlockedReason is { } block)
         {
             ImGui.TextColored(new Vector4(1f, 0.4f, 0.4f, 1f), Plugin.GetSelectionBlockMessage(block));
@@ -1214,7 +1216,11 @@ public class ConfigWindow : Window, IDisposable
         ImGui.SetNextItemWidth(-1);
         if (ImGui.InputText("##LocalAiEndpoint", ref endpoint, 200))
         {
+            var wasConfigured = !string.IsNullOrWhiteSpace(_configuration.LocalAiEndpoint);
             _configuration.LocalAiEndpoint = endpoint.Trim();
+            // Entering or clearing the URL changes whether Local AI may be selected: rebuild engines.
+            if (wasConfigured != !string.IsNullOrWhiteSpace(_configuration.LocalAiEndpoint))
+                SaveEnginesChanged();
         }
         if (ImGui.IsItemHovered()) ImGui.SetTooltip(Resources.LocalAI_EndpointTip);
 

@@ -1111,7 +1111,7 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
 
             // Build the ordered instance list ONLY from the policy-filtered selection
             // (primary first, then allowed fallbacks in list order).
-            var selection = EngineSelection.Select(_configuration.Engines, _configuration.PrimaryEngineId, _configuration.FallbackPolicy);
+            var selection = EngineSelection.Select(_configuration.Engines, _configuration.PrimaryEngineId, _configuration.FallbackPolicy, IsEngineConfigured);
             ReportSelectionBlock(selection);
             var ordered = new List<(Guid Id, ITranslationService Translator, string DisplayName)>();
             foreach (var instance in selection.Engines)
@@ -1190,8 +1190,21 @@ _chatBoxHook = new GameFunctions.ChatBoxHook(
             _ = Framework.RunOnFrameworkThread(() => ChatGui.PrintError($"[Kotodama] {message}"));
         }
 
+        /// <summary>Whether an instance has the settings it needs before any request may be sent.</summary>
+        internal bool IsEngineConfigured(EngineInstance instance) => IsEngineConfigured(_configuration, instance);
+
+        internal static bool IsEngineConfigured(Configuration configuration, EngineInstance instance) => instance.Type switch
+        {
+            // Local AI reads the global endpoint setting; there is deliberately no default URL.
+            TranslationEngine.LocalAI => !string.IsNullOrWhiteSpace(configuration.LocalAiEndpoint),
+            _ => true,
+        };
+
         internal static string GetSelectionBlockMessage(EngineSelectionBlock block) => block switch
         {
+            EngineSelectionBlock.PrimaryNotConfigured => GetResourceText(
+                "Engines_BlockedNotConfigured",
+                "Translation is off: the primary engine has no server URL yet. Enter it in /kotodama → Engines."),
             EngineSelectionBlock.CloudPrimaryNotAllowed => GetResourceText(
                 "Engines_BlockedCloudPrimary",
                 "Translation is off: the primary engine is a cloud service, but the fallback policy only allows local engines. Choose a local primary engine or change the policy in /kotodama → Engines."),

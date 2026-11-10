@@ -17,13 +17,19 @@ public class WelcomeWindow : Window
     {
         _configuration = configuration;
 
-        Size = new Vector2(500, 430);
+        Size = new Vector2(500, 500);
         Flags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoScrollbar;
     }
 
     public override void Draw()
     {
         ImGui.TextWrapped(Resources.Welcome_Intro);
+        ImGui.Spacing();
+        using (ImRaii.PushColor(ImGuiCol.Text, new Vector4(0.6f, 0.8f, 1f, 1f)))
+        {
+            ImGui.TextWrapped(Resources.ResourceManager.GetString("Welcome_LocalOnly", Resources.Culture)
+                ?? "Kotodama translates with your own local AI server and never uses cloud services unless you allow them. Enter your server URL in /kotodama → Engines.");
+        }
         
         ImGui.Separator();
         ImGui.Spacing();

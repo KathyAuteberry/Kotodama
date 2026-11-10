@@ -168,7 +168,8 @@ namespace EchoXIV
         /// <summary>
         /// OpenAI-compatible endpoint URL (base, without /v1/chat/completions).
         /// </summary>
-        public string LocalAiEndpoint { get; set; } = "http://localhost:1234";
+        // No default: Kotodama ships publicly, so nothing is sent until the user enters a URL.
+        public string LocalAiEndpoint { get; set; } = "";
 
         /// <summary>
         /// Model name. Empty uses the server-loaded model.
@@ -280,9 +281,9 @@ namespace EchoXIV
                 changed = true;
             }
 
-            if (string.IsNullOrWhiteSpace(LocalAiEndpoint))
+            if (LocalAiEndpoint == null)
             {
-                LocalAiEndpoint = "http://localhost:1234";
+                LocalAiEndpoint = string.Empty;
                 changed = true;
             }
 
@@ -345,7 +346,7 @@ namespace EchoXIV
             if (!EnginesInitialized)
             {
                 if (Engines == null || Engines.Count == 0)
-                    Engines = CreateDefaultEngines();
+                    Engines = DefaultEngines.Create();
                 EnginesInitialized = true;
                 changed = true;
             }
@@ -362,11 +363,17 @@ namespace EchoXIV
                     PrimaryEngineId = primary.Id;
                     changed = true;
                 }
-                else if (Engines.Count > 0)
+                else
                 {
-                    PrimaryEngineId = Engines[0].Id;
-                    Engines[0].Enabled = true;
-                    changed = true;
+                    // Nothing is enabled: enable the first instance the policy allows. A cloud
+                    // engine is never switched on behind the user's back under a local policy.
+                    var repair = Engines.FirstOrDefault(e => DefaultEngines.MayAutoEnable(e, FallbackPolicy));
+                    if (repair != null)
+                    {
+                        PrimaryEngineId = repair.Id;
+                        repair.Enabled = true;
+                        changed = true;
+                    }
                 }
             }
 
@@ -524,16 +531,6 @@ namespace EchoXIV
                 24,
                 12,
                 13,
-            };
-        }
-
-        private static List<EngineInstance> CreateDefaultEngines()
-        {
-            return new List<EngineInstance>
-            {
-                new() { Type = TranslationEngine.Google, Name = "Google", Enabled = true },
-                new() { Type = TranslationEngine.Papago, Name = "Papago", Enabled = true },
-                new() { Type = TranslationEngine.Yandex, Name = "Yandex", Enabled = true },
             };
         }
 

@@ -165,8 +165,9 @@ namespace EchoXIV.Services
         private (string endpoint, string model) BuildEndpointAndModel()
         {
             var baseUrl = _configuration.LocalAiEndpoint?.Trim().TrimEnd('/');
+            // No default server: never guess where to send chat.
             if (string.IsNullOrWhiteSpace(baseUrl))
-                baseUrl = "http://localhost:1234";
+                throw new LocalAiUnavailableException(Name, "Local AI endpoint is not configured.");
 
             var endpoint = baseUrl.EndsWith("/v1", StringComparison.OrdinalIgnoreCase)
                 ? baseUrl + "/chat/completions"
@@ -216,7 +217,7 @@ namespace EchoXIV.Services
             {
                 var baseUrl = _configuration.LocalAiEndpoint?.Trim().TrimEnd('/');
                 if (string.IsNullOrWhiteSpace(baseUrl))
-                    baseUrl = "http://localhost:1234";
+                    return false;
 
                 var baseNoV1 = baseUrl.EndsWith("/v1", StringComparison.OrdinalIgnoreCase)
                     ? baseUrl[..^3]

@@ -37,6 +37,9 @@ namespace EchoXIV
 
         /// <summary>The primary instance is a cloud service but the policy only allows local engines.</summary>
         CloudPrimaryNotAllowed,
+
+        /// <summary>The primary instance has no endpoint (or other required setting) yet.</summary>
+        PrimaryNotConfigured,
     }
 
     /// <summary>
@@ -47,14 +50,30 @@ namespace EchoXIV
     /// </summary>
     public static class EngineSelection
     {
-        public static EngineSelectionResult Select(IEnumerable<EngineInstance> instances, Guid primaryId, FallbackPolicy policy)
+        /// <param name="isConfigured">
+        /// Optional check for whether an instance has the settings it needs (for example an endpoint).
+        /// An unconfigured primary blocks translation; unconfigured fallbacks are skipped.
+        /// </param>
+        public static EngineSelectionResult Select(
+            IEnumerable<EngineInstance> instances,
+            Guid primaryId,
+            FallbackPolicy policy,
+            Func<EngineInstance, bool>? isConfigured = null)
         {
+            isConfigured ??= _ => true;
             var enabled = instances.Where(e => e.Enabled).ToList();
             var primary = enabled.FirstOrDefault(e => e.Id == primaryId) ?? enabled.FirstOrDefault();
             if (primary == null)
                 return Blocked(EngineSelectionBlock.NoEnabledEngine);
 
-            var others = enabled.Where(e => e.Id != primary.Id);
+            // Policy first: a cloud primary under a local policy is reported as such even when it
+            // also lacks settings.
+            if (IsLocalOnly(policy) && !EngineLocality.IsLocal(primary))
+                return Blocked(EngineSelectionBlock.CloudPrimaryNotAllowed);
+            if (!isConfigured(primary))
+                return Blocked(EngineSelectionBlock.PrimaryNotConfigured);
+
+            var others = enabled.Where(e => e.Id != primary.Id && isConfigured(e));
 
             switch (policy)
             {
