@@ -50,7 +50,9 @@ namespace EchoXIV.Services
             var targetLang = _config.TargetLanguage;
 
             if (router != null &&
-                _cache.TryGetWithRomanization(router.PrimaryCacheVariant, source, sourceLang, targetLang, out var cachedNative, out var cachedRomaji))
+                _cache.TryGetWithRomanization(router.PrimaryCacheVariant, source, sourceLang, targetLang, out var cachedNative, out var cachedRomaji) &&
+                // An untranslated line cached with glossary capitalisation (before 1.0.2.0) is ignored.
+                GlossaryRoundTrip.FromCache(source, cachedNative!, text => _glossary.Protect(text).Text) != source)
             {
                 var cachedToSend = WantsRomanization && !string.IsNullOrEmpty(cachedRomaji) ? cachedRomaji! : cachedNative!;
                 Log("cache", stopwatch, source, cachedNative!, cachedToSend != cachedNative ? cachedToSend : null);
@@ -92,7 +94,7 @@ namespace EchoXIV.Services
                 throw;
             }
 
-            var native = protection.Restore(raw);
+            var native = GlossaryRoundTrip.Finish(source, protection.Text, raw, protection.Restore);
             var toSend = native;
 
             if (combined)

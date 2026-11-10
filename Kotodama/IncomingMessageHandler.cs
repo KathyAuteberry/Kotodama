@@ -509,7 +509,8 @@ public class TranslatedChatMessage
                         out var cached,
                         out var cachedRomanized))
                 {
-                    message.TranslatedText = message.ComposeTranslation(cached!);
+                    cached = GlossaryRoundTrip.FromCache(source, cached!, text => _glossaryService.Protect(text).Text);
+                    message.TranslatedText = message.ComposeTranslation(cached);
                     message.RomanizedText = cachedRomanized;
                     await ApplyRomanizationAsync(
                         message,
@@ -586,7 +587,7 @@ public class TranslatedChatMessage
                 }
 
                 // 4. Restore glossary terms and cache
-                var finalTranslation = SanitizeText(glossary.Restore(translation));
+                var finalTranslation = SanitizeText(GlossaryRoundTrip.Finish(source, protectedText, translation, glossary.Restore));
                 
                 message.TranslatedText = message.ComposeTranslation(finalTranslation);
 
@@ -634,7 +635,7 @@ public class TranslatedChatMessage
                         var targetLanguage = _configuration.GetReadingLanguage();
                         using var secondaryTimeout = TranslationDefaults.CreateTimeoutTokenSource(_lifetimeCts.Token);
                         var translation = await _secondaryTranslator.TranslateAsync(secondaryGlossary.Text, "auto", targetLanguage, secondaryTimeout.Token);
-                        var finalTranslation = SanitizeText(secondaryGlossary.Restore(translation));
+                        var finalTranslation = SanitizeText(GlossaryRoundTrip.Finish(message.GetSourceForTranslation(), secondaryGlossary.Text, translation, secondaryGlossary.Restore));
                         message.TranslatedText = message.ComposeTranslation(finalTranslation);
                         await ApplyRomanizationAsync(message, secondaryTimeout.Token);
                         message.IsTranslating = false;
@@ -666,7 +667,7 @@ public class TranslatedChatMessage
 
                         using var secondaryTimeout = TranslationDefaults.CreateTimeoutTokenSource(_lifetimeCts.Token);
                         var translation = await _secondaryTranslator.TranslateAsync(secondaryGlossary.Text, "auto", targetLanguage, secondaryTimeout.Token);
-                        var finalTranslation = SanitizeText(secondaryGlossary.Restore(translation));
+                        var finalTranslation = SanitizeText(GlossaryRoundTrip.Finish(message.GetSourceForTranslation(), secondaryGlossary.Text, translation, secondaryGlossary.Restore));
                         
                         message.TranslatedText = message.ComposeTranslation(finalTranslation);
                         

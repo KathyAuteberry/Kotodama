@@ -155,6 +155,12 @@ top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected
 - [ ] Another player's lines during someone else's macro are still translated.
 - [ ] Incoming → **Pause senders who post bursts** off: every macro line is translated again.
 
+## 11b. English lines with game terms (1.0.2.0)
+
+- [ ] Someone writes casual English containing a built-in term in lower case (`tea is fun`, `do it in pf`, `top is hard`):
+      no `[KT]` line appears.
+- [ ] A Japanese line with a term (`teaやりたい`) is still translated, with the term written as `TEA`.
+
 ## 12. Lifecycle and performance
 
 - [ ] While a `/tl` is pending (slow or stopped server), unload the plugin. Nothing is sent after unload, and
