@@ -5,6 +5,7 @@
   "ApplicableVersion": "any",
   "Description": "Kotodama is a personal fork of EchoXIV focused on fast, accurate Japanese<->English chat translation for Japanese PF raiding and everyday social chat, powered by a local LLM.\n\nBased on EchoXIV by ssalazar217: https://github.com/ssalazar217/EchoXIV",
   "RepoUrl": "https://github.com/KathyAuteberry/Kotodama",
+  "IconUrl": "https://raw.githubusercontent.com/KathyAuteberry/Kotodama/master/Kotodama/images/icon.png",
   "Tags": [
     "chat",
     "translation",

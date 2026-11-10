@@ -1,8 +1,7 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
+  <Import Project="../Kotodama.Version.props" />
+
   <PropertyGroup>
-    <Version>1.0.2.1</Version>
-    <AssemblyVersion>1.0.2.1</AssemblyVersion>
-    <FileVersion>1.0.2.1</FileVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

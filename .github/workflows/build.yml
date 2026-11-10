@@ -38,3 +38,6 @@ jobs:
 
     - name: Run tests
       run: dotnet test Kotodama.sln --configuration Debug --no-build --logger GitHubActions
+
+    - name: Release tooling tests
+      run: python -m unittest discover -s tools/tests
