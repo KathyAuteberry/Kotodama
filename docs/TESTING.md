@@ -148,8 +148,8 @@ top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected
 
 ## 11a. Raid macro throttle (1.0.1.0)
 
-- [ ] Someone (or an alt) posts a Japanese macro of 10+ lines: the first 2 lines are translated, then one
-      `[KT] Too many lines at once, pausing translations until they stop.` line under their name, then nothing more.
+- [ ] Someone (or an alt) posts a Japanese macro of 10+ lines: the first 2 lines are translated, then nothing more
+      (no notice in chat; the log has "Pausing translations from …").
 - [ ] After they've been quiet for 10 s, their next line is translated again.
 - [ ] Normal conversation (a line every couple of seconds) is never paused.
 - [ ] Another player's lines during someone else's macro are still translated.

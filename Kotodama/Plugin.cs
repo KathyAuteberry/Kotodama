@@ -190,7 +190,6 @@ namespace EchoXIV
                 // Wire events
                 _incomingMessageHandler.OnTranslationStarted += OnTranslationStarted;
                 _incomingMessageHandler.OnMessageTranslated += OnMessageTranslated;
-                _incomingMessageHandler.OnSenderThrottled += OnSenderThrottled;
                 _incomingMessageHandler.OnOutgoingMessage += OnOutgoingMessage;
                 _incomingMessageHandler.OnRequestEngineFailover += HandleEngineFailure;
                 
@@ -495,7 +494,6 @@ namespace EchoXIV
             {
                 _incomingMessageHandler.OnTranslationStarted -= OnTranslationStarted;
                 _incomingMessageHandler.OnMessageTranslated -= OnMessageTranslated;
-                _incomingMessageHandler.OnSenderThrottled -= OnSenderThrottled;
                 _incomingMessageHandler.OnOutgoingMessage -= OnOutgoingMessage;
                 _incomingMessageHandler.OnRequestEngineFailover -= HandleEngineFailure;
             }
@@ -676,19 +674,6 @@ namespace EchoXIV
                 _incomingMessageHandler?.RegisterOwnPrint(line);
                 ChatGui.Print(new XivChatEntry { Type = XivChatType.Echo, Message = line });
             });
-        }
-
-        private void OnSenderThrottled(string sender, XivChatType type, Dalamud.Game.Text.SeStringHandling.SeString senderSeString)
-        {
-            if (!_configuration.ShowIncomingInChat || _shutdownCts.IsCancellationRequested)
-                return;
-
-            // Already on the framework thread (chat message event).
-            var format = Resources.ResourceManager.GetString("Incoming_ThrottleNotice", Resources.Culture)
-                ?? "Too many lines at once, pausing translations until they stop.";
-            var line = $"{IncomingChatEcho.Prefix} {format}";
-            _incomingMessageHandler?.RegisterOwnPrint(line);
-            ChatGui.Print(new XivChatEntry { Type = type, Name = senderSeString, Message = line });
         }
 
         private void EchoIncomingToChat(TranslatedChatMessage message)

@@ -117,12 +117,6 @@ public class TranslatedChatMessage
         /// </summary>
         public event Action? OnRequestEngineFailover;
 
-        /// <summary>
-        /// Raised once when a sender's burst pauses their translations (sender name, chat type,
-        /// sender SeString). Raised on the framework thread.
-        /// </summary>
-        public event Action<string, XivChatType, SeString>? OnSenderThrottled;
-
         private readonly SenderThrottle _senderThrottle = new();
 
         private readonly GlossaryService _glossaryService;
@@ -375,10 +369,7 @@ public class TranslatedChatMessage
                 if (decision != ThrottleDecision.Allow)
                 {
                     if (decision == ThrottleDecision.Suspended)
-                    {
                         _pluginLog.Info($"Pausing translations from {senderName}: burst of lines");
-                        OnSenderThrottled?.Invoke(senderName, type, message.Sender);
-                    }
                     return;
                 }
             }

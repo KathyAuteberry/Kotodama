@@ -841,7 +841,6 @@
   <data name="Incoming_ThrottleMessages"><value>Líneas</value></data>
   <data name="Incoming_ThrottleWindow"><value>en (segundos)</value></data>
   <data name="Incoming_ThrottleCooldown"><value>Pausar hasta que calle durante (segundos)</value></data>
-  <data name="Incoming_ThrottleNotice"><value>Demasiadas líneas a la vez; traducciones en pausa hasta que pare.</value></data>
 </root>
 
 

@@ -844,7 +844,6 @@
     <data name="Incoming_ThrottleMessages"><value>Lines</value></data>
     <data name="Incoming_ThrottleWindow"><value>within (seconds)</value></data>
     <data name="Incoming_ThrottleCooldown"><value>Pause until quiet for (seconds)</value></data>
-    <data name="Incoming_ThrottleNotice"><value>Too many lines at once, pausing translations until they stop.</value></data>
 </root>
 
 

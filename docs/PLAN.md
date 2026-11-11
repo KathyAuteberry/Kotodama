@@ -265,8 +265,8 @@ Why P2 before P1:
 - **Scope.** Raid macros (20 lines in a few seconds) made translations drip into chat long after the macro. Once one
   sender has N lines within W seconds (defaults 3 and 3), that line and the rest of the burst are skipped until the
   sender has been quiet for C seconds (default 10). Every skipped line restarts the pause, so a long macro stays
-  paused to its end. Lines before the limit are still translated. One local `[KT]` notice is printed per pause (when
-  "Show translations in chat" is on). Applies to incoming chat only; outgoing and PF translations are unaffected.
+  paused to its end. Lines before the limit are still translated. Nothing is printed in chat when a pause starts (a notice
+  was tried in 1.0.1.0 and dropped in 1.0.3.0 as noise); the log records it. Applies to incoming chat only; outgoing and PF translations are unaffected.
 - **Files.** `Core/SenderThrottle.cs` (tested with a fake clock), `IncomingMessageHandler.cs`, `Plugin.cs`,
   `Configuration.cs`, `UI/ConfigWindow.cs` (Incoming: toggle plus three sliders).
 
