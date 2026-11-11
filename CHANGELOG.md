@@ -1,3 +1,10 @@
+# Kotodama 1.0.4.0 — your own lines stay yours
+
+## Incoming messages
+
+- Lines you type yourself (without `/tl`) are never translated, so a Japanese line of your own no longer gets a `[KT]` translation. They still appear in the history window as typed when "Show my own messages" is on.
+- Your own lines in party chat are now recognised too (the party number in front of your name used to hide them).
+
 # Kotodama 1.0.3.0 — quieter macro throttle
 
 ## Incoming messages

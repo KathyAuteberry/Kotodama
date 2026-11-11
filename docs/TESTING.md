@@ -163,7 +163,7 @@ top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected
 
 ## 11c. Your own lines (1.0.4.0)
 
-- [ ] Type a Japanese line yourself in /say and in /party (no /tl): no `[KT]` line appears. With "Show own messages"
+- [ ] Type a Japanese line yourself in /say and in /party (no /tl): no `[KT]` line appears. With "Show my own messages"
       on, it's in the history window as typed.
 - [ ] `/tl` lines still work as before.
 
