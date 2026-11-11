@@ -304,7 +304,7 @@ public class TranslatedChatMessage
                 return;
 
             // Check local player
-            var isLocalPlayer = !string.IsNullOrEmpty(localPlayerName) && (senderName.StartsWith(localPlayerName));
+            var isLocalPlayer = LocalSender.Is(senderName, localPlayerName);
             
             // Drop own messages when ShowOutgoingMessages is off, unless explicit pending
             if (isLocalPlayer && !_configuration.ShowOutgoingMessages && originalFromPending == null)
@@ -327,6 +327,23 @@ public class TranslatedChatMessage
                 };
 
                 OnOutgoingMessage?.Invoke(pendingMsg);
+                return;
+            }
+
+            // Your own lines typed directly (not through /tl) are never translated: kept as typed.
+            if (isLocalPlayer)
+            {
+                OnOutgoingMessage?.Invoke(new TranslatedChatMessage
+                {
+                    Timestamp = DateTime.Now,
+                    ChatType = type,
+                    Sender = senderName,
+                    OriginalText = messageText,
+                    TranslatedText = messageText,
+                    OriginalScript = NonLatinScriptDetector.Detect(messageText).ToString(),
+                    IsOutgoing = true,
+                    IsTranslating = false
+                });
                 return;
             }
 

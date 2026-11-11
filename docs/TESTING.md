@@ -161,6 +161,12 @@ top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected
       no `[KT]` line appears.
 - [ ] A Japanese line with a term (`teaやりたい`) is still translated, with the term written as `TEA`.
 
+## 11c. Your own lines (1.0.4.0)
+
+- [ ] Type a Japanese line yourself in /say and in /party (no /tl): no `[KT]` line appears. With "Show own messages"
+      on, it's in the history window as typed.
+- [ ] `/tl` lines still work as before.
+
 ## 12. Lifecycle and performance
 
 - [ ] While a `/tl` is pending (slow or stopped server), unload the plugin. Nothing is sent after unload, and
