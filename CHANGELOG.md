@@ -1,3 +1,9 @@
+# Kotodama 1.0.3.0 — quieter macro throttle
+
+## Incoming messages
+
+- The raid macro throttle no longer prints "Too many lines at once, pausing translations until they stop." in chat. The rest of a burst is still skipped silently, exactly as before.
+
 # Kotodama 1.0.2.0 — no more fake translations of English lines
 
 ## Incoming messages
