@@ -74,6 +74,11 @@ jobs:
           ref: master
           token: ${{ secrets.PLOGONS_TOKEN }}
           path: manifest-repo
+      - name: Checkout source master for metadata
+        uses: actions/checkout@v5
+        with:
+          ref: master
+          path: source-master
       - run: python -m unittest discover -s manifest-repo/tools/tests
       - name: Update metadata from published asset
         shell: bash
@@ -81,7 +86,8 @@ jobs:
           set -euo pipefail
           for attempt in 1 2 3; do
             git -C manifest-repo pull --ff-only
-            python manifest-repo/tools/update_manifest.py --plugin Kotodama --zip "existing/Kotodama-${GITHUB_REF_NAME#v}.zip" --version "${GITHUB_REF_NAME#v}"
+            python manifest-repo/tools/update_manifest.py release --plugin Kotodama --zip "existing/Kotodama-${GITHUB_REF_NAME#v}.zip" --version "${GITHUB_REF_NAME#v}"
+            python manifest-repo/tools/update_manifest.py metadata --plugin Kotodama --source source-master
             if git -C manifest-repo diff --quiet; then exit 0; fi
             git -C manifest-repo config user.name github-actions[bot]
             git -C manifest-repo config user.email '41898282+github-actions[bot]@users.noreply.github.com'

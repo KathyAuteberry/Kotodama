@@ -1,0 +1,54 @@
+name: Sync plogons metadata
+# Author, description, punchline, tags, URLs and the short changelog of the published version
+# come from master, so they reach the plogons manifest without a new release. Version, API level
+# and download links stay owned by the release workflow.
+on:
+  push:
+    branches: [master]
+    paths:
+      - Kotodama/Kotodama.json
+      - CHANGELOG.md
+      - .github/workflows/sync-plogons-metadata.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: kotodama-plogons-metadata
+  cancel-in-progress: false
+jobs:
+  sync:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Checkout metadata repository
+        uses: actions/checkout@v5
+        with:
+          repository: KathyAuteberry/plogons
+          ref: master
+          token: ${{ secrets.PLOGONS_TOKEN }}
+          path: manifest-repo
+      - run: python -m unittest discover -s manifest-repo/tools/tests
+      - name: Update metadata from master
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            git -C manifest-repo pull --ff-only
+            python manifest-repo/tools/update_manifest.py metadata --plugin Kotodama --source source --print-changelog
+            if git -C manifest-repo diff --quiet; then exit 0; fi
+            git -C manifest-repo config user.name github-actions[bot]
+            git -C manifest-repo config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git -C manifest-repo add mostly-harmless.json
+            git -C manifest-repo commit -m "chore(metadata): sync Kotodama metadata from ${GITHUB_SHA::12}"
+            if git -C manifest-repo push origin HEAD:master; then exit 0; fi
+            git -C manifest-repo fetch origin master
+            git -C manifest-repo reset --hard origin/master
+          done
+          exit 1
