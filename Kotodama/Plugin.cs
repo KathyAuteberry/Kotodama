@@ -696,7 +696,7 @@ namespace EchoXIV
             if (!_configuration.ShowIncomingInChat)
                 return;
 
-            var line = IncomingChatEcho.Format(message.OriginalText, message.TranslatedText, message.TranslationFailed, message.IsOutgoing);
+            var line = IncomingChatEcho.Format(message.OriginalText, message.TranslatedText, message.TranslationFailed, message.IsOutgoing, message.Untranslated);
             if (line == null)
                 return;
 

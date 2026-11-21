@@ -27,6 +27,27 @@ public sealed class IncomingChatEchoTests
     }
 
     [Fact]
+    public void An_untranslated_line_with_phrases_is_not_echoed()
+    {
+        // "brb 【Bio】": only "brb" went to the engine and came back as is; the composed
+        // "【Bio】 brb" differs from the original but isn't a translation.
+        Assert.True(IncomingChatEcho.IsPassThrough("brb", "brb"));
+        Assert.Null(IncomingChatEcho.Format("brb \uE040 Bio \uE041", "【Bio】 brb", false, false, untranslated: true));
+    }
+
+    [Theory]
+    [InlineData("brb", " brb ", true)]
+    [InlineData("よろしくお願いします", "Looking forward to it.", false)]
+    [InlineData("brb", null, false)]
+    public void Pass_through_means_the_text_came_back_unchanged(string source, string? translation, bool expected) =>
+        Assert.Equal(expected, IncomingChatEcho.IsPassThrough(source, translation));
+
+    [Fact]
+    public void A_real_translation_with_phrases_is_echoed() =>
+        Assert.Equal("[KT] 【Let's do it!】 Looking forward to it.",
+            IncomingChatEcho.Format("よろしくお願いします\uE040 Let's do it! \uE041", "【Let's do it!】 Looking forward to it.", false, false, untranslated: false));
+
+    [Fact]
     public void Registry_skips_each_printed_line_once()
     {
         var registry = new OwnPrintRegistry();

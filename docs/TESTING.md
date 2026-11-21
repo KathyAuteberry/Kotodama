@@ -167,6 +167,11 @@ top to bottom. Items marked **⚠** are the riskiest. Report anything unexpected
       on, it's in the history window as typed.
 - [ ] `/tl` lines still work as before.
 
+## 11d. English lines with auto-translate phrases
+
+- [ ] Someone writes English with an auto-translate phrase (`brb 【Bio】`, `missing 【Reprisal】`): no `[KT]` line.
+- [ ] Japanese with a phrase (`こんばんは！【Let's do it!】`) is still translated: `[KT] 【Let's do it!】 Good evening!`.
+
 ## 12. Lifecycle and performance
 
 - [ ] While a `/tl` is pending (slow or stopped server), unload the plugin. Nothing is sent after unload, and

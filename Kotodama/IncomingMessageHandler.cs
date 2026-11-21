@@ -42,6 +42,17 @@ public class TranslatedChatMessage
         public string GetSourceForTranslation() => TranslatableText ?? OriginalText;
 
         public string ComposeTranslation(string translation) => AutoTranslateText.Compose(AutoTranslatePhrases, translation);
+
+        /// <summary>The engine left the text unchanged; never echoed into chat.</summary>
+        [Newtonsoft.Json.JsonIgnore]
+        public bool Untranslated { get; set; }
+
+        /// <summary>Stores the engine's result with the auto-translate phrases, noting a pass-through.</summary>
+        public void SetTranslation(string translation)
+        {
+            TranslatedText = ComposeTranslation(translation);
+            Untranslated = IncomingChatEcho.IsPassThrough(GetSourceForTranslation(), translation);
+        }
         public Guid Id { get; set; } = Guid.NewGuid();
 
         // Romanization fields
@@ -496,7 +507,7 @@ public class TranslatedChatMessage
                     detectedLanguage.IsConfident(_configuration.LanguageDetectionConfidence) &&
                     LanguageDetector.IsSameLanguage(detectedLanguage.Code, targetLanguage))
                 {
-                    message.TranslatedText = message.ComposeTranslation(source);
+                    message.SetTranslation(source);
                     await ApplyRomanizationAsync(message, CancellationToken.None, detectedLanguageCode: detectedLanguage.Code);
                     message.IsTranslating = false;
                     if (_configuration.VerboseLogging)
@@ -518,7 +529,7 @@ public class TranslatedChatMessage
                         out var cachedRomanized))
                 {
                     cached = GlossaryRoundTrip.FromCache(source, cached!, text => _glossaryService.Protect(text).Text);
-                    message.TranslatedText = message.ComposeTranslation(cached);
+                    message.SetTranslation(cached);
                     message.RomanizedText = cachedRomanized;
                     await ApplyRomanizationAsync(
                         message,
@@ -597,7 +608,7 @@ public class TranslatedChatMessage
                 // 4. Restore glossary terms and cache
                 var finalTranslation = SanitizeText(GlossaryRoundTrip.Finish(source, protectedText, translation, glossary.Restore));
                 
-                message.TranslatedText = message.ComposeTranslation(finalTranslation);
+                message.SetTranslation(finalTranslation);
 
                 await ApplyRomanizationAsync(message, primaryTimeout.Token, !combinedRomanization);
 
@@ -644,7 +655,7 @@ public class TranslatedChatMessage
                         using var secondaryTimeout = TranslationDefaults.CreateTimeoutTokenSource(_lifetimeCts.Token);
                         var translation = await _secondaryTranslator.TranslateAsync(secondaryGlossary.Text, "auto", targetLanguage, secondaryTimeout.Token);
                         var finalTranslation = SanitizeText(GlossaryRoundTrip.Finish(message.GetSourceForTranslation(), secondaryGlossary.Text, translation, secondaryGlossary.Restore));
-                        message.TranslatedText = message.ComposeTranslation(finalTranslation);
+                        message.SetTranslation(finalTranslation);
                         await ApplyRomanizationAsync(message, secondaryTimeout.Token);
                         message.IsTranslating = false;
                         OnMessageTranslated?.Invoke(message);
@@ -677,7 +688,7 @@ public class TranslatedChatMessage
                         var translation = await _secondaryTranslator.TranslateAsync(secondaryGlossary.Text, "auto", targetLanguage, secondaryTimeout.Token);
                         var finalTranslation = SanitizeText(GlossaryRoundTrip.Finish(message.GetSourceForTranslation(), secondaryGlossary.Text, translation, secondaryGlossary.Restore));
                         
-                        message.TranslatedText = message.ComposeTranslation(finalTranslation);
+                        message.SetTranslation(finalTranslation);
                         
                         await ApplyRomanizationAsync(message, secondaryTimeout.Token);
 

@@ -15,9 +15,13 @@ namespace EchoXIV
         /// The line to print, or null when there is nothing worth printing: failed, outgoing,
         /// empty, or identical to the original (same-language lines, auto-translate-only lines).
         /// </summary>
-        public static string? Format(string original, string? translated, bool failed, bool outgoing)
+        /// <param name="untranslated">
+        /// The engine left the text as it was (see <see cref="IsPassThrough"/>). Nothing is printed,
+        /// even though moving auto-translate phrases to the front makes the line look different.
+        /// </param>
+        public static string? Format(string original, string? translated, bool failed, bool outgoing, bool untranslated = false)
         {
-            if (failed || outgoing || string.IsNullOrWhiteSpace(translated))
+            if (failed || outgoing || untranslated || string.IsNullOrWhiteSpace(translated))
                 return null;
 
             var text = translated.Trim();
@@ -26,6 +30,14 @@ namespace EchoXIV
 
             return $"{Prefix} {text}";
         }
+
+        /// <summary>
+        /// True when <paramref name="translation"/> is just the text that was sent (auto-translate
+        /// phrases already removed), i.e. nothing was translated: an English line for an English
+        /// reader, or a line with no letters.
+        /// </summary>
+        public static bool IsPassThrough(string source, string? translation) =>
+            translation != null && string.Equals(translation.Trim(), source.Trim(), StringComparison.Ordinal);
     }
 
     /// <summary>
