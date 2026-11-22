@@ -1,3 +1,9 @@
+# Kotodama 1.0.5.0 — auto-translate phrases no longer trigger fake translations
+
+## Incoming messages
+
+- English lines containing an auto-translate phrase (`brb 【Bio】`, `missing 【Reprisal】`) no longer get a `[KT]` line that only moves the phrase to the front. The phrases were already left out when deciding a line's language, so these lines were never translated; the rebuilt line just looked different from the original. Lines the engine leaves unchanged are now never echoed. Japanese lines with auto-translate phrases are translated as before.
+
 # Kotodama 1.0.4.0 — your own lines stay yours
 
 ## Incoming messages
